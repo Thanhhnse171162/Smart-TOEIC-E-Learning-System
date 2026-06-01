@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   BarChart3,
   BookOpen,
@@ -53,14 +54,15 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
-          <div className="relative">
-            <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 dark:from-brand-900/30 dark:to-brand-800/20 shadow-xl flex items-center justify-center overflow-hidden">
-              <div className="text-center p-8">
-                <div className="mx-auto mb-4 h-32 w-48 rounded-xl bg-white dark:bg-card shadow-lg flex items-center justify-center">
-                  <BarChart3 className="h-16 w-16 text-primary" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">Interactive Learning Dashboard</p>
-              </div>
+          <div className="relative flex justify-center items-center lg:pl-10">
+            <div className="relative w-full aspect-[4/3] max-w-[550px] overflow-hidden [mask-image:linear-gradient(to_bottom,black,transparent_150%)]">
+              <Image 
+                src="/images/practice/screen.png" 
+                alt="AI-Powered Learning Student" 
+                fill
+                className="object-cover scale-[1.05] mix-blend-multiply dark:mix-blend-normal hover:scale-[1.08] transition-transform duration-700 ease-out"
+                priority
+              />
             </div>
           </div>
         </div>

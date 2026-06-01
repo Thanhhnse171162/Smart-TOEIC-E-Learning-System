@@ -9,10 +9,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "/#features", label: "Courses" },
-  { href: "/#features", label: "Practice" },
-  { href: "/#features", label: "Mock Tests" },
-  { href: "/#features", label: "AI Help" },
+  { href: "/student/courses", label: "Courses" },
+  { href: "/student/practice", label: "Practice" },
+  { href: "/student/mock-test", label: "Mock Tests" },
+  { href: "/student/ai-chat", label: "AI Help" },
 ];
 
 export function LandingNavbar() {
@@ -27,18 +27,21 @@ export function LandingNavbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-primary",
-                link.label === "Courses" ? "text-primary border-b-2 border-primary pb-0.5" : "text-muted-foreground"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.label}
+                href={link.href}
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  isActive ? "text-primary border-b-2 border-primary pb-0.5" : "text-muted-foreground"
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-2">
