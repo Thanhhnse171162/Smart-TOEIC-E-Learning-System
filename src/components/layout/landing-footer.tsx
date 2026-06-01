@@ -9,12 +9,12 @@ export function LandingFooter() {
           <div>
             <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary mb-4">
               <GraduationCap className="h-6 w-6" />
-              TOEIC Master
+              SmartTOEIC
             </Link>
             <p className="text-sm text-muted-foreground max-w-md">
               Empowering learners worldwide to achieve their TOEIC goals through AI-powered personalized learning.
             </p>
-            <p className="text-xs text-muted-foreground mt-6">© 2024 TOEIC Master e-Learning. All rights reserved.</p>
+            <p className="text-xs text-muted-foreground mt-6">© 2024 SmartTOEIC e-Learning. All rights reserved.</p>
           </div>
           <div className="flex flex-wrap gap-x-8 gap-y-2 md:justify-end md:items-start">
             {["Privacy Policy", "Terms of Service", "Cookie Policy", "Contact Support"].map((link) => (

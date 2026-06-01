@@ -252,7 +252,8 @@ function PracticeQuestionView({
   const [playing, setPlaying] = useState(false);
   const [difficultyOpen, setDifficultyOpen] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState("Easy, Medium, Hard");
-  const [timeLeft, setTimeLeft] = useState(category === "listening" ? 60 * 60 : 20 * 60);
+  const maxTime = category === "listening" ? 60 * 60 : 20 * 60;
+  const [timeLeft, setTimeLeft] = useState(maxTime);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -461,8 +462,20 @@ function PracticeQuestionView({
                 Timer
               </h3>
               
-              <div className="relative flex items-center justify-center w-36 h-36 rounded-full border-[10px] border-indigo-100 dark:border-indigo-900/30 mb-8">
-                <div className="flex flex-col items-center">
+              <div className="relative flex items-center justify-center w-36 h-36 mb-8">
+                {/* SVG Progress Ring */}
+                <svg width="144" height="144" className="absolute transform -rotate-90">
+                  <circle cx="72" cy="72" r="67" fill="none" stroke="#e0e7ff" strokeWidth="10" />
+                  <circle 
+                    cx="72" cy="72" r="67" fill="none" stroke="#4f46e5" strokeWidth="10" 
+                    strokeDasharray={2 * Math.PI * 67} 
+                    strokeDashoffset={(2 * Math.PI * 67) - ((timeLeft / maxTime) * (2 * Math.PI * 67))} 
+                    strokeLinecap="round" 
+                    className="transition-all duration-1000 ease-linear" 
+                  />
+                </svg>
+                
+                <div className="relative z-10 flex flex-col items-center">
                   <span className="text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">{formatTime(timeLeft)}</span>
                   <span className="text-[10px] font-bold text-slate-400 tracking-wider mt-0.5">REMAINING</span>
                 </div>

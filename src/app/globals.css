@@ -63,3 +63,8 @@
     @apply bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent;
   }
 }
+
+/* Bắt buộc ẩn chữ N của Next.js trong Dev Mode */
+nextjs-portal {
+  display: none !important;
+}

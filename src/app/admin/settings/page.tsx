@@ -16,7 +16,7 @@ export default function AdminSettingsPage() {
         <Card className="rounded-xl">
           <CardHeader><CardTitle>General Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2"><Label>Platform Name</Label><Input defaultValue="TOEIC Master" className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Platform Name</Label><Input defaultValue="SmartTOEIC" className="rounded-xl" /></div>
             <div className="space-y-2"><Label>Support Email</Label><Input defaultValue="support@toeicmaster.com" className="rounded-xl" /></div>
             <Button className="rounded-xl">Save</Button>
           </CardContent>
