@@ -11,14 +11,20 @@ interface DashboardHeaderProps {
   subtitle?: string;
   userName?: string;
   userAvatar?: string;
+  children?: React.ReactNode;
 }
 
-export function DashboardHeader({ title, subtitle, userName = "Student", userAvatar }: DashboardHeaderProps) {
+export function DashboardHeader({ title, subtitle, userName = "Student", userAvatar, children }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 lg:px-6 backdrop-blur">
-      <div>
-        <h1 className="text-lg font-semibold lg:text-xl">{title}</h1>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      <div className="flex items-center gap-6">
+        {title || subtitle ? (
+          <div>
+            <h1 className="text-lg font-semibold lg:text-xl">{title}</h1>
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          </div>
+        ) : null}
+        {children && <div className="hidden sm:block">{children}</div>}
       </div>
       <div className="flex items-center gap-2 lg:gap-4">
         <div className="relative hidden md:block">
