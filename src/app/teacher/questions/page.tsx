@@ -268,36 +268,35 @@ export default function TeacherQuestionsPage() {
           </div>
         </div>
 
-        {/* Part Selection Grid */}
-        <div className="flex gap-4 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+        {/* Part Selection Row */}
+        <div className="flex items-center gap-8 mb-6 overflow-x-auto pb-2 custom-scrollbar px-2">
+          <button 
+            onClick={() => { setFilterPart('all'); setCurrentPage(1); }}
+            className={`shrink-0 font-semibold text-[15px] transition-colors ${filterPart === 'all' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            All Parts
+          </button>
           {[
-            { part: 1, name: "Photographs", qs: 150, icon: Camera },
-            { part: 2, name: "Question-Response", qs: 150, icon: MessageCircle },
-            { part: 3, name: "Conversations", qs: 150, icon: Users, group: true },
-            { part: 4, name: "Talks", qs: 150, icon: Mic, group: true },
-            { part: 5, name: "Incomplete Sentences", qs: 200, icon: PenLine },
-            { part: 6, name: "Text Completion", qs: 200, icon: FileText, group: true },
-            { part: 7, name: "Reading Comprehension", qs: 250, icon: BookOpen, group: true },
+            { part: 1, qs: 150 },
+            { part: 2, qs: 150 },
+            { part: 3, qs: 150 },
+            { part: 4, qs: 150 },
+            { part: 5, qs: 200 },
+            { part: 6, qs: 200 },
+            { part: 7, qs: 250 },
           ].map((p) => {
             const isActive = filterPart === p.part.toString();
-            const bg = isActive ? "bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500" : "bg-white border-slate-200";
-            const iconBg = isActive ? "bg-white text-[#4f46e5]" : "bg-slate-100 text-slate-600";
             return (
-              <div 
+              <button 
                 key={p.part} 
                 onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
-                className={`shrink-0 w-[170px] flex flex-col border ${bg} rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all`}
+                className={`shrink-0 flex items-center gap-2 font-semibold text-[15px] transition-colors ${isActive ? 'text-slate-800' : 'text-slate-800 hover:opacity-80'}`}
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 shadow-sm ${iconBg}`}>
-                  <p.icon className="w-5 h-5" />
-                </div>
-                <p className="text-[13px] font-bold text-slate-800 mb-0.5">Part {p.part}:</p>
-                <p className="text-xs font-semibold text-slate-500 mb-3 truncate">{p.name}</p>
-                <div className="flex items-center gap-2 mt-auto">
-                  <span className="text-xs font-bold text-slate-700">{p.qs} Qs</span>
-                  {p.group && <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none shadow-none text-[10px] px-1.5 py-0 font-bold uppercase tracking-wider">Group</Badge>}
-                </div>
-              </div>
+                Part {p.part}
+                <span className={`px-2.5 py-0.5 rounded-full text-[13px] font-medium transition-colors ${isActive ? 'bg-[#4f46e5] text-white' : 'bg-slate-200/80 text-slate-600'}`}>
+                  ({p.qs})
+                </span>
+              </button>
             );
           })}
         </div>
