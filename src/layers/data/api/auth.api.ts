@@ -8,6 +8,13 @@ export async function apiLogin(email: string, password: string) {
   });
 }
 
+export async function apiVerifyEmail(email: string, token: string) {
+  return apiRequest<{ message: string }>("/api/Auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ email, token }),
+  });
+}
+
 export async function apiRegister(data: {
   fullName: string;
   email: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import { Search, Plus, Camera, MessageCircle, Users, Mic, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, PlayCircle, CheckCircle2 } from "lucide-react";
@@ -124,6 +125,8 @@ const MOCK_QUESTIONS: QuestionGroup[] = [
 ];
 
 export default function TeacherQuestionsPage() {
+  const router = useRouter();
+  const [questions, setQuestions] = useState<QuestionGroup[]>(MOCK_QUESTIONS);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
@@ -140,6 +143,10 @@ export default function TeacherQuestionsPage() {
   // Drawer state
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<QuestionGroup | null>(null);
+
+  // Edit state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editData, setEditData] = useState<QuestionGroup | null>(null);
 
   // Dialog state
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, parentId: string, subId: string} | null>(null);
@@ -188,7 +195,7 @@ export default function TeacherQuestionsPage() {
   const confirmChildSelection = (selectAll: boolean) => {
     if (!confirmDialog) return;
     const { parentId, subId } = confirmDialog;
-    const group = MOCK_QUESTIONS.find(q => q.id === parentId);
+    const group = questions.find(q => q.id === parentId);
     
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -208,11 +215,23 @@ export default function TeacherQuestionsPage() {
     setIsPreviewOpen(true);
   };
 
+  // Edit Drawer
+  const openEdit = (group: QuestionGroup) => {
+    setEditData(JSON.parse(JSON.stringify(group))); // deep clone
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editData) return;
+    setQuestions(prev => prev.map(q => q.id === editData.id ? editData : q));
+    setIsEditOpen(false);
+  };
+
   const handleActionClick = (action: string) => {
     alert(`${action} feature is coming soon!`);
   };
 
-  const filteredQuestions = MOCK_QUESTIONS.filter(q => {
+  const filteredQuestions = questions.filter(q => {
     if (filterPart !== "all" && q.part.toString() !== filterPart) return false;
     if (filterDifficulty !== "all" && q.difficulty !== filterDifficulty) return false;
     if (filterTopic !== "all" && q.topic !== filterTopic) return false;
@@ -239,7 +258,7 @@ export default function TeacherQuestionsPage() {
         <div className="flex gap-3 ml-auto">
           <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Export</Button>
           <Button variant="outline" onClick={() => handleActionClick('Import CSV')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Import CSV</Button>
-          <Button onClick={() => handleActionClick('Add Question')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-10 px-5 shadow-sm transition-colors"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
+          <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-10 px-5 shadow-sm transition-colors"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
         </div>
       }
     >
@@ -269,36 +288,66 @@ export default function TeacherQuestionsPage() {
         </div>
 
         {/* Part Selection Row */}
-        <div className="flex items-center gap-8 mb-6 overflow-x-auto pb-2 custom-scrollbar px-2">
+        <div className="flex items-center gap-6 mb-6 overflow-x-auto pb-2 custom-scrollbar px-2">
           <button 
             onClick={() => { setFilterPart('all'); setCurrentPage(1); }}
-            className={`shrink-0 font-semibold text-[15px] transition-colors ${filterPart === 'all' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`shrink-0 font-bold text-[15px] transition-colors ${filterPart === 'all' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
           >
             All Parts
           </button>
-          {[
-            { part: 1, qs: 150 },
-            { part: 2, qs: 150 },
-            { part: 3, qs: 150 },
-            { part: 4, qs: 150 },
-            { part: 5, qs: 200 },
-            { part: 6, qs: 200 },
-            { part: 7, qs: 250 },
-          ].map((p) => {
-            const isActive = filterPart === p.part.toString();
-            return (
-              <button 
-                key={p.part} 
-                onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
-                className={`shrink-0 flex items-center gap-2 font-semibold text-[15px] transition-colors ${isActive ? 'text-slate-800' : 'text-slate-800 hover:opacity-80'}`}
-              >
-                Part {p.part}
-                <span className={`px-2.5 py-0.5 rounded-full text-[13px] font-medium transition-colors ${isActive ? 'bg-[#4f46e5] text-white' : 'bg-slate-200/80 text-slate-600'}`}>
-                  ({p.qs})
-                </span>
-              </button>
-            );
-          })}
+          
+          <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
+            <div className="flex items-center gap-1.5 text-[#4f46e5] bg-indigo-50/80 px-2.5 py-1 rounded-md">
+              <Mic className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Listening</span>
+            </div>
+            {[
+              { part: 1, qs: 150 },
+              { part: 2, qs: 150 },
+              { part: 3, qs: 150 },
+              { part: 4, qs: 150 },
+            ].map((p) => {
+              const isActive = filterPart === p.part.toString();
+              return (
+                <button 
+                  key={p.part} 
+                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
+                  className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-[#4f46e5]' : 'text-slate-600 hover:text-[#4f46e5]'}`}
+                >
+                  Part {p.part}
+                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-[#4f46e5] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {p.qs}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
+            <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50/80 px-2.5 py-1 rounded-md">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-black uppercase tracking-wider">Reading</span>
+            </div>
+            {[
+              { part: 5, qs: 200 },
+              { part: 6, qs: 200 },
+              { part: 7, qs: 250 },
+            ].map((p) => {
+              const isActive = filterPart === p.part.toString();
+              return (
+                <button 
+                  key={p.part} 
+                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
+                  className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-emerald-700' : 'text-slate-600 hover:text-emerald-600'}`}
+                >
+                  Part {p.part}
+                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {p.qs}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Filters */}
@@ -319,7 +368,12 @@ export default function TeacherQuestionsPage() {
               className="h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-white font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-36 shadow-sm"
             >
               <option value="all">All Parts</option>
-              {[1,2,3,4,5,6,7].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
+              <optgroup label="Listening">
+                {[1,2,3,4].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
+              </optgroup>
+              <optgroup label="Reading">
+                {[5,6,7].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
+              </optgroup>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
@@ -446,7 +500,7 @@ export default function TeacherQuestionsPage() {
 
                     <div className="col-span-1 flex items-center justify-end gap-2 pr-2 text-slate-400">
                       <button onClick={() => openPreview(group)} className="hover:text-indigo-600 transition-colors p-1"><Eye className="w-4 h-4 stroke-[2.5]" /></button>
-                      <button onClick={() => handleActionClick('Edit Question')} className="hover:text-amber-600 transition-colors p-1"><Edit2 className="w-4 h-4 stroke-[2.5]" /></button>
+                      <button onClick={() => openEdit(group)} className="hover:text-amber-600 transition-colors p-1"><Edit2 className="w-4 h-4 stroke-[2.5]" /></button>
                       <button onClick={() => handleActionClick('Delete Question')} className="hover:text-rose-600 transition-colors p-1"><Trash2 className="w-4 h-4 stroke-[2.5]" /></button>
                     </div>
                   </div>
@@ -605,6 +659,169 @@ export default function TeacherQuestionsPage() {
                         <span className="text-[11px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5"/> Explanation</span>
                         <span className="text-[13px] text-blue-800 font-medium leading-relaxed">{sq.explanation}</span>
                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Drawer: Edit Question */}
+      {isEditOpen && editData && (
+        <>
+          <div className="fixed inset-0 bg-slate-900/40 z-50 transition-opacity backdrop-blur-sm" onClick={() => setIsEditOpen(false)}></div>
+          <div className="fixed top-0 right-0 h-screen w-full max-w-[600px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm">
+                  <Edit2 className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-extrabold text-slate-900">Edit Question Group</h2>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5">ID: #{editData.id}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold">Cancel</Button>
+                <Button onClick={handleSaveEdit} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold">Save Changes</Button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Difficulty</label>
+                    <select 
+                      value={editData.difficulty}
+                      onChange={(e) => setEditData({...editData, difficulty: e.target.value as any})}
+                      className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold bg-white"
+                    >
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Topic</label>
+                    <Input 
+                      value={editData.topic}
+                      onChange={(e) => setEditData({...editData, topic: e.target.value})}
+                      className="h-10 rounded-xl border-slate-200 font-semibold"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Group Text / Instruction</label>
+                  <Input 
+                    value={editData.text}
+                    onChange={(e) => setEditData({...editData, text: e.target.value})}
+                    className="h-10 rounded-xl border-slate-200 font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Shared Content */}
+              <div className="space-y-4">
+                <h4 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider border-b pb-2">Shared Content</h4>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500">Audio URL</label>
+                    <Input 
+                      value={editData.sharedContent.audioUrl || ""}
+                      onChange={(e) => setEditData({
+                        ...editData, 
+                        sharedContent: {...editData.sharedContent, audioUrl: e.target.value}
+                      })}
+                      placeholder="e.g. /audio/sample.mp3"
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500">Reading Passage</label>
+                    <textarea 
+                      value={editData.sharedContent.passageText || ""}
+                      onChange={(e) => setEditData({
+                        ...editData, 
+                        sharedContent: {...editData.sharedContent, passageText: e.target.value}
+                      })}
+                      className="w-full rounded-xl border border-slate-200 p-3 min-h-[100px] text-sm"
+                      placeholder="Enter passage text here..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub Questions */}
+              <div className="space-y-6">
+                <h4 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider border-b pb-2">Questions ({editData.subQuestions.length})</h4>
+                
+                {editData.subQuestions.map((sq, index) => (
+                  <div key={sq.subId} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">{index + 1}</div>
+                      <span className="font-bold text-slate-600 text-sm">#{sq.subId}</span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500">Question Text</label>
+                      <Input 
+                        value={sq.questionText}
+                        onChange={(e) => {
+                          const newSubQs = [...editData.subQuestions];
+                          newSubQs[index].questionText = e.target.value;
+                          setEditData({...editData, subQuestions: newSubQs});
+                        }}
+                        className="rounded-xl border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-500">Options</label>
+                      {sq.options.map((opt, optIndex) => {
+                        const letter = String.fromCharCode(65 + optIndex);
+                        const isCorrect = sq.correctAnswer === letter;
+                        return (
+                          <div key={optIndex} className="flex items-center gap-3">
+                            <button 
+                              onClick={() => {
+                                const newSubQs = [...editData.subQuestions];
+                                newSubQs[index].correctAnswer = letter;
+                                setEditData({...editData, subQuestions: newSubQs});
+                              }}
+                              className={`w-8 h-8 shrink-0 rounded-md font-bold text-xs transition-colors ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                            >
+                              {letter}
+                            </button>
+                            <Input 
+                              value={opt}
+                              onChange={(e) => {
+                                const newSubQs = [...editData.subQuestions];
+                                newSubQs[index].options[optIndex] = e.target.value;
+                                setEditData({...editData, subQuestions: newSubQs});
+                              }}
+                              className={`rounded-xl ${isCorrect ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200'}`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500">Explanation</label>
+                      <textarea 
+                        value={sq.explanation}
+                        onChange={(e) => {
+                          const newSubQs = [...editData.subQuestions];
+                          newSubQs[index].explanation = e.target.value;
+                          setEditData({...editData, subQuestions: newSubQs});
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-3 min-h-[80px] text-sm"
+                      />
                     </div>
                   </div>
                 ))}

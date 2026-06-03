@@ -1,6 +1,6 @@
 "use client";
 
-import { apiLogin, apiRegister } from "@/layers/data/api/auth.api";
+import { apiLogin, apiRegister, apiVerifyEmail } from "@/layers/data/api/auth.api";
 import { saveSession, type StoredUser } from "@/lib/auth/session";
 import { getDashboardPathByRole } from "@/lib/auth/routes";
 
@@ -28,5 +28,13 @@ export async function registerWithApi(data: {
   role?: string;
 }) {
   await apiRegister(data);
-  return loginWithApi(data.email, data.password);
+  return { success: true };
+}
+
+export async function verifyEmailWithApi(email: string, token: string, password?: string) {
+  await apiVerifyEmail(email, token);
+  if (password) {
+    return loginWithApi(email, password);
+  }
+  return { success: true, redirectTo: "/login" };
 }
