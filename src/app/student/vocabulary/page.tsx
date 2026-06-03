@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, RotateCcw, Search, Star, Volume2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, RotateCcw, Search, Star, Volume2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { ApiDataBadge } from "@/components/api-data-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,17 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { studentSidebarItems } from "@/lib/navigation";
 import { vocabularyTopics } from "@/layers/data/mock/data";
 import { Badge } from "@/components/ui/badge";
-
-const words = [
-  { word: "negotiate", meaning: "to discuss formally to reach an agreement", example: "We need to negotiate the terms of the contract.", topic: "Business", favorite: true },
-  { word: "revenue", meaning: "income from business operations", example: "Revenue increased by 15% this quarter.", topic: "Finance", favorite: false },
-  { word: "campaign", meaning: "planned activities to achieve a goal", example: "The marketing campaign was successful.", topic: "Marketing", favorite: false },
-  { word: "deadline", meaning: "latest time to complete something", example: "We must meet the project deadline.", topic: "Office", favorite: true },
-];
+import { useVocabularies } from "@/hooks/use-vocabularies";
+import { getStoredUser } from "@/lib/auth/session";
 
 const vibrantBlue = "#0b5ce5";
 
 export default function VocabularyPage() {
+  const { words, loading, fromApi } = useVocabularies();
+  const user = getStoredUser();
   const [flipped, setFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
   const word = words[current];
@@ -39,8 +37,32 @@ export default function VocabularyPage() {
     }, 150);
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" userName={user?.fullName}>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!word) {
+    return (
+      <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" userName={user?.fullName}>
+        <ApiDataBadge fromApi={fromApi} />
+        <Card className="rounded-xl p-8 text-center text-muted-foreground mt-4">
+          No vocabulary in database. Add words via API or Teacher panel.
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" subtitle="342 words learned">
+    <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" subtitle={`${words.length} words`} userName={user?.fullName}>
+      <div className="mb-4">
+        <ApiDataBadge fromApi={fromApi} />
+      </div>
       {/* Top Progress */}
       <div className="mb-8">
         <div className="flex justify-between text-[13px] font-bold text-slate-700 tracking-tight mb-3">
@@ -117,7 +139,7 @@ export default function VocabularyPage() {
                   style={{ backfaceVisibility: "hidden" }}
                 >
                   <div className="absolute top-8 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#f0f4f8] text-[#334155] px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide">{word.topic}</span>
+                    <span className="bg-[#f0f4f8] text-[#334155] px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide capitalize">{word.topic}</span>
                   </div>
                   
                   <h2 className="text-4xl sm:text-6xl font-black text-slate-900 mb-6 tracking-tight">{word.word}</h2>
@@ -167,13 +189,13 @@ export default function VocabularyPage() {
 
         <TabsContent value="favorites">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-            {words.filter((w) => w.favorite).map((w) => (
+            {words.filter((w) => w.isFavorite).map((w) => (
               <Card key={w.word} className="rounded-2xl border-2 border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="font-extrabold text-xl text-slate-800 tracking-tight">{w.word}</p>
-                      <Badge variant="secondary" className="mt-2 bg-[#f0f4f8] text-[#334155]">{w.topic}</Badge>
+                      <Badge variant="secondary" className="mt-2 bg-[#f0f4f8] text-[#334155] capitalize">{w.topic}</Badge>
                     </div>
                     <Heart className="h-6 w-6 text-[#0b5ce5] fill-current" />
                   </div>

@@ -2,6 +2,14 @@
 // DATA ACCESS LAYER - Repositories
 // ============================================================
 
+import { USE_API } from "@/lib/api/config";
+import {
+  apiGetCourses,
+  apiGetUsers,
+  apiGetUsersByRole,
+  apiGetVocabularies,
+} from "@/layers/data/api/resources.api";
+import { mapApiCourse, mapApiUser, mapApiVocabulary } from "@/layers/data/api/mappers";
 import {
   mockAchievements,
   mockActivities,
@@ -31,18 +39,51 @@ import type { User, UserRole } from "@/layers/domain/types";
 
 export class UserRepository {
   async findByEmail(email: string): Promise<User | null> {
+    if (USE_API) {
+      try {
+        const users = await apiGetUsers();
+        const found = users.find((u) => u.email === email);
+        if (found) return mapApiUser(found);
+      } catch {
+        /* fallback */
+      }
+    }
     return mockUsers.find((u) => u.email === email) ?? null;
   }
 
   async findById(id: string): Promise<User | null> {
+    if (USE_API) {
+      try {
+        const users = await apiGetUsers();
+        const found = users.find((u) => String(u.userId) === id);
+        if (found) return mapApiUser(found);
+      } catch {
+        /* fallback */
+      }
+    }
     return mockUsers.find((u) => u.id === id) ?? null;
   }
 
   async findAll(): Promise<User[]> {
+    if (USE_API) {
+      try {
+        return (await apiGetUsers()).map(mapApiUser);
+      } catch {
+        /* fallback */
+      }
+    }
     return mockUsers;
   }
 
   async findByRole(role: UserRole): Promise<User[]> {
+    if (USE_API) {
+      try {
+        const capitalized = role.charAt(0).toUpperCase() + role.slice(1);
+        return (await apiGetUsersByRole(capitalized)).map(mapApiUser);
+      } catch {
+        /* fallback */
+      }
+    }
     return mockUsers.filter((u) => u.role === role);
   }
 }
@@ -99,15 +140,26 @@ export class MockTestRepository {
 
 export class VocabularyRepository {
   async getAll() {
+    if (USE_API) {
+      try {
+        const data = await apiGetVocabularies();
+        const mapped = data.map(mapApiVocabulary);
+        if (mapped.length > 0) return mapped;
+      } catch {
+        /* fallback */
+      }
+    }
     return mockVocabulary;
   }
 
   async getByTopic(topic: string) {
-    return mockVocabulary.filter((v) => v.topic === topic);
+    const all = await this.getAll();
+    return all.filter((v) => v.topic === topic.toLowerCase());
   }
 
   async getFavorites() {
-    return mockVocabulary.filter((v) => v.isFavorite);
+    const all = await this.getAll();
+    return all.filter((v) => v.isFavorite);
   }
 }
 
@@ -143,6 +195,15 @@ export class LandingRepository {
 
 export class CourseRepository {
   async getAll() {
+    if (USE_API) {
+      try {
+        const data = await apiGetCourses();
+        const mapped = data.map(mapApiCourse);
+        if (mapped.length > 0) return mapped;
+      } catch {
+        /* fallback */
+      }
+    }
     return mockCourses;
   }
 }
