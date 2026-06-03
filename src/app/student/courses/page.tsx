@@ -1,12 +1,14 @@
 "use client";
 
-import { BookOpen, Loader2, Users } from "lucide-react";
+import { BookOpen, Loader2, Users, PlayCircle, Trophy, Target, Search, Award } from "lucide-react";
+import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ApiDataBadge } from "@/components/api-data-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { studentSidebarItems } from "@/lib/navigation";
 import { useCourses } from "@/hooks/use-courses";
 import { getStoredUser } from "@/lib/auth/session";

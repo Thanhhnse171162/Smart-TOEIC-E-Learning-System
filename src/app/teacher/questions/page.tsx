@@ -1,48 +1,645 @@
-import { Plus, Search } from "lucide-react";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { teacherSidebarItems } from "@/lib/navigation";
+"use client";
 
-const questions = [
-  { id: "Q001", part: "Part 1", type: "Listening", text: "Photograph description question...", difficulty: "Easy" },
-  { id: "Q002", part: "Part 5", type: "Reading", text: "The company announced that it _______ a new branch...", difficulty: "Medium" },
-  { id: "Q003", part: "Part 3", type: "Listening", text: "Conversation about project deadline...", difficulty: "Hard" },
-  { id: "Q004", part: "Part 7", type: "Reading", text: "Double passage about company merger...", difficulty: "Hard" },
+import React, { useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { teacherSidebarItems } from "@/lib/navigation";
+import { Search, Plus, Camera, MessageCircle, Users, Mic, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, PlayCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// --- Types ---
+type SubQuestion = {
+  subId: string;
+  questionText: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+};
+
+type QuestionGroup = {
+  id: string;
+  isGroup: boolean;
+  part: number;
+  difficulty: "Easy" | "Medium" | "Hard";
+  topic: string;
+  sharedContent: {
+    audioUrl: string | null;
+    passageText: string | null;
+  };
+  usage: string[];
+  text: string;
+  subQuestions: SubQuestion[];
+};
+
+// --- Mock Data ---
+const MOCK_QUESTIONS: QuestionGroup[] = [
+  {
+    id: "Q1001",
+    isGroup: true,
+    part: 1,
+    difficulty: "Easy",
+    topic: "Grammar",
+    sharedContent: { audioUrl: "/audio/sample.mp3", passageText: null },
+    usage: ["Weekly #12", "Full #3"],
+    text: "Part 1 | The woman is holding a...",
+    subQuestions: [
+      { subId: "Q1001.1", questionText: "What is the woman holding?", options: ["A book", "A pen", "A cup", "A bag"], correctAnswer: "A", explanation: "The woman clearly holds a book." },
+      { subId: "Q1001.2", questionText: "Where is the woman standing?", options: ["By the window", "Near the door", "In the garden", "At the desk"], correctAnswer: "D", explanation: "She is at the desk." }
+    ]
+  },
+  {
+    id: "Q1002",
+    isGroup: true,
+    part: 2,
+    difficulty: "Medium",
+    topic: "Vocabulary",
+    sharedContent: { audioUrl: "/audio/sample2.mp3", passageText: null },
+    usage: ["Full #3"],
+    text: "Part 2 | Where is the nearest post office?",
+    subQuestions: [
+      { subId: "Q1002.1", questionText: "Where is the post office?", options: ["Next to bank", "Down street", "I don't know", "It is closed"], correctAnswer: "B", explanation: "The speaker says down the street." },
+      { subId: "Q1002.2", questionText: "What time does it close?", options: ["5 PM", "6 PM", "7 PM", "8 PM"], correctAnswer: "A", explanation: "Closes at 5 PM." }
+    ]
+  },
+  {
+    id: "Q1003",
+    isGroup: true,
+    part: 3,
+    difficulty: "Hard",
+    topic: "Business",
+    sharedContent: { audioUrl: "/audio/sample3.mp3", passageText: null },
+    usage: ["Weekly #12", "Full #3"],
+    text: "Part 3 | What are the speakers discussing?",
+    subQuestions: [
+      { subId: "Q1003.1", questionText: "What does the woman ask for?", options: ["A refund", "A different size", "A manager", "Store credit"], correctAnswer: "C", explanation: "The woman clearly states she wants a manager." },
+      { subId: "Q1003.2", questionText: "What does the man suggest?", options: ["Option A", "Option B", "Option C", "Option D"], correctAnswer: "A", explanation: "The man proposes Option A." }
+    ]
+  },
+  {
+    id: "Q1004",
+    isGroup: true,
+    part: 4,
+    difficulty: "Medium",
+    topic: "Announcement",
+    sharedContent: { audioUrl: "/audio/sample4.mp3", passageText: null },
+    usage: ["Full #3"],
+    text: "Part 4 | According to the speaker, what will happen...",
+    subQuestions: [
+      { subId: "Q1004.1", questionText: "What will happen?", options: ["Delay", "Cancel", "Proceed", "Move"], correctAnswer: "C", explanation: "It will proceed." },
+      { subId: "Q1004.2", questionText: "Who should the listeners contact?", options: ["Manager", "Support", "HR", "No one"], correctAnswer: "B", explanation: "Contact support for help." },
+      { subId: "Q1004.3", questionText: "When is the new date?", options: ["Monday", "Friday", "Next Week", "Unknown"], correctAnswer: "A", explanation: "Rescheduled to Monday." }
+    ]
+  },
+  {
+    id: "Q1005",
+    isGroup: true,
+    part: 5,
+    difficulty: "Easy",
+    topic: "Grammar",
+    sharedContent: { audioUrl: null, passageText: null },
+    usage: [],
+    text: "Part 5 | The new policy ___ effect next month.",
+    subQuestions: [
+      { subId: "Q1005.1", questionText: "The new policy ___ effect next month.", options: ["takes", "taking", "took", "take"], correctAnswer: "A", explanation: "Takes effect is correct." }
+    ]
+  },
+  {
+    id: "Q1006",
+    isGroup: true,
+    part: 6,
+    difficulty: "Hard",
+    topic: "Email",
+    sharedContent: { audioUrl: null, passageText: "Dear Mr. Kim,\n\nI am writing to inquire about the latest software update. We noticed several bugs in the reporting module. Please fix them by Friday.\n\nBest,\nSarah" },
+    usage: [],
+    text: "Part 6 | Dear Mr. Kim, I am writing to...",
+    subQuestions: [
+      { subId: "Q1006.1", questionText: "What is the purpose of the email?", options: ["Complaint", "Inquiry", "Application", "Invitation"], correctAnswer: "B", explanation: "Inquiry about product." },
+      { subId: "Q1006.2", questionText: "When is the deadline?", options: ["Monday", "Tuesday", "Wednesday", "Friday"], correctAnswer: "D", explanation: "Friday is stated." },
+      { subId: "Q1006.3", questionText: "Who should be contacted?", options: ["HR", "IT", "Sales", "Manager"], correctAnswer: "A", explanation: "Contact HR." }
+    ]
+  }
 ];
 
 export default function TeacherQuestionsPage() {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterPart, setFilterPart] = useState<string>("all");
+  const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
+  const [filterTopic, setFilterTopic] = useState<string>("all");
+  const [unusedOnly, setUnusedOnly] = useState(false);
+
+  // Drawer state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<QuestionGroup | null>(null);
+
+  // Dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, parentId: string, subId: string} | null>(null);
+
+  // Toggle Accordion
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Pagination (resets accordion state)
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setExpandedIds(new Set()); 
+  };
+
+  // Checkbox logic
+  const handleParentCheckbox = (group: QuestionGroup, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      group.subQuestions.forEach(sq => {
+        if (checked) next.add(sq.subId);
+        else next.delete(sq.subId);
+      });
+      return next;
+    });
+  };
+
+  const handleChildCheckbox = (parentId: string, subId: string, checked: boolean) => {
+    if (checked) {
+      // Logic requirement: show prompt to select all when picking a single subId
+      setConfirmDialog({ isOpen: true, parentId, subId });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(subId);
+        return next;
+      });
+    }
+  };
+
+  const confirmChildSelection = (selectAll: boolean) => {
+    if (!confirmDialog) return;
+    const { parentId, subId } = confirmDialog;
+    const group = MOCK_QUESTIONS.find(q => q.id === parentId);
+    
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selectAll && group) {
+        group.subQuestions.forEach(sq => next.add(sq.subId));
+      } else {
+        next.add(subId);
+      }
+      return next;
+    });
+    setConfirmDialog(null);
+  };
+
+  // Preview Drawer
+  const openPreview = (group: QuestionGroup) => {
+    setPreviewData(group);
+    setIsPreviewOpen(true);
+  };
+
+  const handleActionClick = (action: string) => {
+    alert(`${action} feature is coming soon!`);
+  };
+
+  const filteredQuestions = MOCK_QUESTIONS.filter(q => {
+    if (filterPart !== "all" && q.part.toString() !== filterPart) return false;
+    if (filterDifficulty !== "all" && q.difficulty !== filterDifficulty) return false;
+    if (filterTopic !== "all" && q.topic !== filterTopic) return false;
+    if (unusedOnly && q.usage.length > 0) return false;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      if (!q.text.toLowerCase().includes(term) && !q.id.toLowerCase().includes(term) && !q.topic.toLowerCase().includes(term)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / itemsPerPage));
+  const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
-    <DashboardLayout sidebarItems={teacherSidebarItems} title="Question Bank" sidebarTitle="Teacher Portal" userName="Tran Thi B">
-      <div className="flex flex-wrap gap-4 justify-between mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search questions..." className="pl-9 rounded-xl" />
+    <DashboardLayout 
+      sidebarItems={teacherSidebarItems} 
+      title="Question Bank" 
+      subtitle="1,250 questions • Parts 1-7" 
+      userName="Tran Thi B"
+      headerContent={
+        <div className="flex gap-3 ml-auto">
+          <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Export</Button>
+          <Button variant="outline" onClick={() => handleActionClick('Import CSV')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Import CSV</Button>
+          <Button onClick={() => handleActionClick('Add Question')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-10 px-5 shadow-sm transition-colors"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
         </div>
-        <Button className="rounded-xl gap-2"><Plus className="h-4 w-4" />Add Question</Button>
-      </div>
-      <div className="space-y-3">
-        {questions.map((q) => (
-          <Card key={q.id} className="rounded-xl">
-            <CardContent className="pt-4 pb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline">{q.id}</Badge>
-                  <Badge variant="secondary">{q.part}</Badge>
-                  <Badge>{q.type}</Badge>
+      }
+    >
+      <div className="max-w-[1400px] mx-auto pb-10">
+        {/* Top Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Questions</p>
+            <p className="text-2xl font-black text-slate-800">1,250</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Listening (Parts 1-4)</p>
+            <p className="text-2xl font-black text-[#4f46e5]">600</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Reading (Parts 5-7)</p>
+            <p className="text-2xl font-black text-emerald-600">650</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Used Questions</p>
+            <p className="text-2xl font-black text-teal-600">850</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unused Questions</p>
+            <p className="text-2xl font-black text-amber-500">400</p>
+          </div>
+        </div>
+
+        {/* Part Selection Grid */}
+        <div className="flex gap-4 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+          {[
+            { part: 1, name: "Photographs", qs: 150, icon: Camera },
+            { part: 2, name: "Question-Response", qs: 150, icon: MessageCircle },
+            { part: 3, name: "Conversations", qs: 150, icon: Users, group: true },
+            { part: 4, name: "Talks", qs: 150, icon: Mic, group: true },
+            { part: 5, name: "Incomplete Sentences", qs: 200, icon: PenLine },
+            { part: 6, name: "Text Completion", qs: 200, icon: FileText, group: true },
+            { part: 7, name: "Reading Comprehension", qs: 250, icon: BookOpen, group: true },
+          ].map((p) => {
+            const isActive = filterPart === p.part.toString();
+            const bg = isActive ? "bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500" : "bg-white border-slate-200";
+            const iconBg = isActive ? "bg-white text-[#4f46e5]" : "bg-slate-100 text-slate-600";
+            return (
+              <div 
+                key={p.part} 
+                onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
+                className={`shrink-0 w-[170px] flex flex-col border ${bg} rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 shadow-sm ${iconBg}`}>
+                  <p.icon className="w-5 h-5" />
                 </div>
-                <p className="text-sm truncate">{q.text}</p>
+                <p className="text-[13px] font-bold text-slate-800 mb-0.5">Part {p.part}:</p>
+                <p className="text-xs font-semibold text-slate-500 mb-3 truncate">{p.name}</p>
+                <div className="flex items-center gap-2 mt-auto">
+                  <span className="text-xs font-bold text-slate-700">{p.qs} Qs</span>
+                  {p.group && <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none shadow-none text-[10px] px-1.5 py-0 font-bold uppercase tracking-wider">Group</Badge>}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={q.difficulty === "Hard" ? "destructive" : q.difficulty === "Medium" ? "default" : "secondary"}>{q.difficulty}</Badge>
-                <Button variant="outline" size="sm" className="rounded-xl">Edit</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            );
+          })}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="relative flex-1 min-w-[250px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              placeholder="Search by ID, content, tag..." 
+              className="pl-9 bg-white border-slate-200 rounded-xl font-semibold text-sm shadow-sm h-11" 
+            />
+          </div>
+          <div className="relative">
+            <select 
+              value={filterPart}
+              onChange={(e) => { setFilterPart(e.target.value); setCurrentPage(1); }}
+              className="h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-white font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-36 shadow-sm"
+            >
+              <option value="all">All Parts</option>
+              {[1,2,3,4,5,6,7].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select 
+              value={filterDifficulty}
+              onChange={(e) => { setFilterDifficulty(e.target.value); setCurrentPage(1); }}
+              className="h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-white font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-44 shadow-sm"
+            >
+              <option value="all">All Difficulties</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select 
+              value={filterTopic}
+              onChange={(e) => { setFilterTopic(e.target.value); setCurrentPage(1); }}
+              className="h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-white font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-40 shadow-sm"
+            >
+              <option value="all">All Topics</option>
+              <option value="Grammar">Grammar</option>
+              <option value="Vocabulary">Vocabulary</option>
+              <option value="Business">Business</option>
+              <option value="Announcement">Announcement</option>
+              <option value="Email">Email</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="flex items-center gap-3 ml-auto bg-white border border-slate-200 px-4 h-11 rounded-xl shadow-sm">
+            <span className="text-sm font-bold text-slate-700">Unused only</span>
+            <Switch checked={unusedOnly} onCheckedChange={(v) => { setUnusedOnly(v); setCurrentPage(1); }} />
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-4 items-center p-4 border-b border-slate-100 bg-slate-50 text-[12px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="col-span-1 flex items-center gap-3 pl-2">
+              <span>ID</span>
+            </div>
+            <div className="col-span-5">Question</div>
+            <div className="col-span-1">Part</div>
+            <div className="col-span-1">Difficulty</div>
+            <div className="col-span-1">Topic</div>
+            <div className="col-span-2">Usage</div>
+            <div className="col-span-1 text-right pr-4">Actions</div>
+          </div>
+
+          {/* Body */}
+          <div className="divide-y divide-slate-100">
+            {paginatedQuestions.map(group => {
+              const isExpanded = expandedIds.has(group.id);
+              const groupSubIds = group.isGroup ? group.subQuestions.map(sq => sq.subId) : [group.id];
+              const selectedCount = groupSubIds.filter(id => selectedIds.has(id)).length;
+              const allSelected = selectedCount === groupSubIds.length && groupSubIds.length > 0;
+              const someSelected = selectedCount > 0 && selectedCount < groupSubIds.length;
+              
+              return (
+                <React.Fragment key={group.id}>
+                  {/* Parent Row */}
+                  <div className={`grid grid-cols-12 gap-4 items-center p-4 transition-colors hover:bg-slate-50/80 ${isExpanded ? 'bg-slate-50/50' : ''}`}>
+                    <div className="col-span-1 flex items-center gap-3 pl-2">
+                      <Checkbox 
+                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                        onCheckedChange={(c) => handleParentCheckbox(group, !!c)}
+                        className="rounded border-slate-300 w-4 h-4 shadow-sm data-[state=checked]:bg-[#4f46e5] data-[state=checked]:border-[#4f46e5]" 
+                      />
+                      <span className="font-bold text-slate-700 text-[13px]">#{group.id}</span>
+                    </div>
+                    
+                    <div className="col-span-5 flex items-start gap-3">
+                      {group.isGroup && (
+                        <button onClick={() => toggleExpand(group.id)} className="mt-1 p-0.5 hover:bg-slate-200 rounded text-slate-400 transition-colors shrink-0">
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600" /> : <ChevronRight className="w-4 h-4" />}
+                        </button>
+                      )}
+                      {!group.isGroup && <div className="w-5 shrink-0"></div>}
+                      
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${group.part <= 4 ? 'bg-[#4f46e5]' : 'bg-emerald-500'} text-white shadow-sm mt-0.5`}>
+                        {group.part === 1 && <Camera className="w-4 h-4" />}
+                        {group.part === 2 && <MessageCircle className="w-4 h-4" />}
+                        {group.part === 3 && <Users className="w-4 h-4" />}
+                        {group.part === 4 && <Mic className="w-4 h-4" />}
+                        {group.part === 5 && <PenLine className="w-4 h-4" />}
+                        {group.part === 6 && <FileText className="w-4 h-4" />}
+                        {group.part === 7 && <BookOpen className="w-4 h-4" />}
+                      </div>
+                      <div className="space-y-1.5 cursor-pointer" onClick={() => openPreview(group)}>
+                        <p className="text-[13px] font-bold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-2 leading-relaxed">{group.text}</p>
+                        {group.isGroup && (
+                          <div className="flex gap-2 items-center">
+                            <Badge className="bg-amber-100 text-amber-700 border-none hover:bg-amber-100 shadow-none text-[10px] px-1.5 py-0 font-bold uppercase tracking-wider">Group</Badge>
+                            <span className="text-[11px] font-bold text-slate-500">· {group.subQuestions.length} Qs</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <Badge className={`${group.part <= 4 ? 'bg-indigo-500' : 'bg-emerald-500'} text-white border-none shadow-sm rounded-lg px-2.5 py-0.5 text-[11px] font-bold hover:opacity-90`}>Part {group.part}</Badge>
+                    </div>
+
+                    <div className="col-span-1">
+                      <Badge className={`${group.difficulty === 'Hard' ? 'bg-rose-500' : group.difficulty === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'} text-white border-none shadow-sm rounded-lg px-2.5 py-0.5 text-[11px] font-bold hover:opacity-90`}>{group.difficulty}</Badge>
+                    </div>
+
+                    <div className="col-span-1">
+                      <Badge className="bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 rounded-lg px-2.5 py-0.5 text-[11px] font-bold shadow-none">{group.topic}</Badge>
+                    </div>
+
+                    <div className="col-span-2 flex flex-wrap gap-1.5">
+                      {group.usage.length > 0 ? (
+                        group.usage.map((u, i) => (
+                          <span key={i} className="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-md px-2 py-0.5 shadow-sm">{u}</span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] font-bold text-slate-400 italic bg-slate-50 border border-slate-200 border-dashed rounded-md px-2 py-0.5">Unused</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-1 flex items-center justify-end gap-2 pr-2 text-slate-400">
+                      <button onClick={() => openPreview(group)} className="hover:text-indigo-600 transition-colors p-1"><Eye className="w-4 h-4 stroke-[2.5]" /></button>
+                      <button onClick={() => handleActionClick('Edit Question')} className="hover:text-amber-600 transition-colors p-1"><Edit2 className="w-4 h-4 stroke-[2.5]" /></button>
+                      <button onClick={() => handleActionClick('Delete Question')} className="hover:text-rose-600 transition-colors p-1"><Trash2 className="w-4 h-4 stroke-[2.5]" /></button>
+                    </div>
+                  </div>
+
+                  {/* Child Rows (Accordion) */}
+                  {isExpanded && group.isGroup && (
+                    <div className="bg-slate-50/50 border-y border-slate-100 divide-y divide-slate-100/60">
+                      {group.subQuestions.map((sq, idx) => (
+                        <div key={sq.subId} className="grid grid-cols-12 gap-4 items-center py-3 px-4 pl-14 hover:bg-slate-100/50 transition-colors">
+                          <div className="col-span-1 flex items-center gap-3">
+                            <Checkbox 
+                              checked={selectedIds.has(sq.subId)}
+                              onCheckedChange={(c) => handleChildCheckbox(group.id, sq.subId, !!c)}
+                              className="rounded border-slate-300 w-4 h-4 shadow-sm data-[state=checked]:bg-[#4f46e5] data-[state=checked]:border-[#4f46e5]" 
+                            />
+                          </div>
+                          <div className="col-span-11 flex items-center gap-3">
+                            <span className="text-[11px] font-bold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm">#{sq.subId}</span>
+                            <span className="text-[13px] font-semibold text-slate-600">{idx + 1}. {sq.questionText}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+          
+          {/* Pagination */}
+          <div className="p-4 border-t border-slate-200 flex items-center justify-between text-[13px] font-bold text-slate-500 bg-white">
+            <span>Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredQuestions.length)} of {filteredQuestions.length}</span>
+            <div className="flex gap-1.5">
+              <Button 
+                onClick={() => handlePageChange(Math.max(1, currentPage - 1))} 
+                disabled={currentPage === 1}
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-50"
+              >
+                Previous
+              </Button>
+              {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
+                <Button 
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  variant={currentPage === page ? "default" : "outline"} 
+                  size="sm" 
+                  className={`h-8 w-8 rounded-lg font-bold ${currentPage === page ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-sm' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button 
+                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} 
+                disabled={currentPage === totalPages || totalPages === 0}
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-50"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* --- Overlay Modals --- */}
+      
+      {/* Drawer: Preview Question */}
+      {isPreviewOpen && previewData && (
+        <>
+          <div className="fixed inset-0 bg-slate-900/40 z-50 transition-opacity backdrop-blur-sm" onClick={() => setIsPreviewOpen(false)}></div>
+          <div className="fixed top-0 right-0 h-screen w-full max-w-[550px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-sm">
+                  <Eye className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-extrabold text-slate-900">Preview Question Group</h2>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5">ID: #{previewData.id}</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsPreviewOpen(false)} className="rounded-full hover:bg-slate-200 text-slate-500">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Info Badges & Title */}
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Badge className="bg-indigo-500 text-white font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider">Part {previewData.part}</Badge>
+                  <Badge className={`${previewData.difficulty === 'Hard' ? 'bg-rose-500' : previewData.difficulty === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'} text-white font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider`}>{previewData.difficulty}</Badge>
+                  <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider">{previewData.topic}</Badge>
+                </div>
+                <h3 className="text-[15px] font-bold text-slate-800 leading-relaxed">{previewData.text}</h3>
+              </div>
+
+              {/* Shared Content Area */}
+              {(previewData.sharedContent.audioUrl || previewData.sharedContent.passageText) && (
+                <div className="space-y-4">
+                  {previewData.sharedContent.audioUrl && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+                      <button className="w-10 h-10 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shrink-0 hover:bg-[#4338ca] transition-colors shadow-sm">
+                        <PlayCircle className="w-5 h-5 ml-0.5" />
+                      </button>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="w-1/3 h-full bg-[#4f46e5] rounded-full"></div>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-500">0:45 / 2:30</span>
+                    </div>
+                  )}
+                  {previewData.sharedContent.passageText && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 shadow-sm">
+                      <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">Reading Passage</p>
+                      <p className="text-[14px] text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
+                        {previewData.sharedContent.passageText}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub Questions List */}
+              <div className="space-y-6 pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
+                  <h4 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider">Questions ({previewData.subQuestions.length})</h4>
+                </div>
+                
+                {previewData.subQuestions.map((sq, index) => (
+                  <div key={sq.subId} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-50 p-4 border-b border-slate-100 flex gap-3 items-start">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 text-[13px] font-bold flex items-center justify-center shrink-0 shadow-sm">{index + 1}</div>
+                      <p className="text-[14px] font-bold text-slate-800 pt-0.5 leading-snug">{sq.questionText}</p>
+                    </div>
+                    <div className="p-5 space-y-3">
+                      {sq.options.map((opt, i) => {
+                        const letter = String.fromCharCode(65 + i);
+                        const isCorrect = sq.correctAnswer === letter;
+                        return (
+                          <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black shadow-sm ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                              {letter}
+                            </div>
+                            <span className={`text-[14px] font-semibold ${isCorrect ? 'text-emerald-800' : 'text-slate-600'}`}>{opt}</span>
+                            {isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-500 ml-auto" />}
+                          </div>
+                        );
+                      })}
+                      {/* Explanation Block */}
+                      <div className="mt-5 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <span className="text-[11px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5"/> Explanation</span>
+                        <span className="text-[13px] text-blue-800 font-medium leading-relaxed">{sq.explanation}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Dialog: Checkbox Selection Warning */}
+      {confirmDialog && (
+        <>
+          <div className="fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 m-4">
+              <div className="p-8 text-center space-y-5">
+                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-2 shadow-inner">
+                  <Users className="w-10 h-10 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 mb-2">Group Question Selection</h3>
+                  <p className="text-[15px] text-slate-600 font-medium leading-relaxed px-2">
+                    Câu hỏi này thuộc nhóm <span className="font-bold text-slate-800">#{confirmDialog.parentId}</span>. Bạn có muốn tự động chọn toàn bộ câu hỏi trong nhóm này không?
+                  </p>
+                </div>
+              </div>
+              <div className="p-5 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+                <Button variant="ghost" onClick={() => setConfirmDialog(null)} className="font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-xl h-11">Cancel</Button>
+                <Button variant="outline" onClick={() => confirmChildSelection(false)} className="bg-white font-bold border-slate-200 text-slate-700 rounded-xl h-11 hover:bg-slate-50 shadow-sm">Select this only</Button>
+                <Button onClick={() => confirmChildSelection(true)} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-11 shadow-sm">Agree (Select All)</Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </DashboardLayout>
   );
 }
