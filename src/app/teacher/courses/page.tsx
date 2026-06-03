@@ -8,11 +8,32 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
 const courses = [
-  { id: "c1", title: "TOEIC Listening Mastery (Part 1-4)", students: 1250, rating: 4.8, status: "Published", lessons: 24, hours: 12, image: "bg-indigo-500", progress: 100 },
-  { id: "c2", title: "Advanced Reading Strategies (Part 7)", students: 840, rating: 4.9, status: "Published", lessons: 18, hours: 8, image: "bg-emerald-500", progress: 100 },
-  { id: "c3", title: "TOEIC Vocabulary Crash Course", students: 0, rating: 0, status: "Draft", lessons: 12, hours: 5, image: "bg-amber-500", progress: 65 },
-  { id: "c4", title: "Full Mock Test Walkthrough", students: 320, rating: 4.6, status: "Published", lessons: 10, hours: 20, image: "bg-rose-500", progress: 100 },
+  { id: "c1", title: "TOEIC Listening Mastery (Part 1-4)", students: 1250, rating: 4.8, status: "Published", lessons: 24, hours: 12, level: "B1", gradient: "linear-gradient(135deg, #22c55e 0%, #059669 50%, #047857 100%)", progress: 100 },
+  { id: "c2", title: "Advanced Reading Strategies (Part 7)", students: 840, rating: 4.9, status: "Published", lessons: 18, hours: 8, level: null, gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 50%, #0891b2 100%)", progress: 100 },
+  { id: "c3", title: "TOEIC Vocabulary Crash Course", students: 0, rating: 0, status: "Draft", lessons: 12, hours: 5, level: null, gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)", progress: 65 },
+  { id: "c4", title: "Full Mock Test Walkthrough", students: 320, rating: 4.6, status: "Published", lessons: 10, hours: 20, level: null, gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)", progress: 100 },
 ];
+
+function StarRating({ rating }: { rating: number }) {
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    if (i <= Math.floor(rating)) {
+      stars.push(<Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />);
+    } else if (i === Math.ceil(rating) && rating % 1 !== 0) {
+      stars.push(
+        <div key={i} className="relative w-3.5 h-3.5">
+          <Star className="w-3.5 h-3.5 text-slate-200 absolute" />
+          <div className="overflow-hidden absolute" style={{ width: `${(rating % 1) * 100}%` }}>
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+          </div>
+        </div>
+      );
+    } else {
+      stars.push(<Star key={i} className="w-3.5 h-3.5 text-slate-200" />);
+    }
+  }
+  return <div className="flex items-center gap-0.5">{stars}</div>;
+}
 
 export default function TeacherCoursesPage() {
   return (
@@ -21,14 +42,8 @@ export default function TeacherCoursesPage() {
       title="My Courses" 
       subtitle="Manage your curriculum and track student progress"
       userName="Tran Thi B"
-      headerContent={
-        <div className="flex gap-3 ml-auto">
-          <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-5 shadow-sm transition-colors gap-2">
-            <Plus className="w-4 h-4 stroke-[3]"/> Create New Course
-          </Button>
-        </div>
-      }
     >
+
       <div className="max-w-[1400px] mx-auto pb-10 space-y-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -72,82 +87,122 @@ export default function TeacherCoursesPage() {
 
         {/* Toolbar */}
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button variant="outline" className="bg-white border-slate-200 text-slate-800 font-bold rounded-xl shadow-sm h-9 px-4">All Courses</Button>
             <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Published (3)</Button>
             <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Drafts (1)</Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 border-none"><LayoutGrid className="w-4 h-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-400"><BookOpen className="w-4 h-4" /></Button>
+          <div className="flex items-center gap-3">
+            <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-9 px-5 shadow-sm transition-colors gap-2 text-[13px]">
+              <Plus className="w-4 h-4 stroke-[3]"/> Create New Course
+            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 border-none"><LayoutGrid className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-400"><BookOpen className="w-4 h-4" /></Button>
+            </div>
           </div>
         </div>
 
-        {/* Course Grid */}
+        {/* Course Grid - Image 1 Style */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {courses.map((course) => (
-            <div key={course.id} className="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col hover:-translate-y-1">
-              {/* Image Banner */}
-              <Link href={`/teacher/courses/${course.id}`} className="relative h-44 block overflow-hidden">
-                <div className={`absolute inset-0 ${course.image} opacity-90 group-hover:scale-105 transition-transform duration-500`}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                
-                <div className="absolute top-4 left-4">
-                  {course.status === 'Published' ? (
-                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm font-bold px-2.5 py-0.5 rounded-lg text-[11px] uppercase tracking-wider">Published</Badge>
-                  ) : (
-                    <Badge className="bg-amber-400 hover:bg-amber-500 text-amber-950 border-none shadow-sm font-bold px-2.5 py-0.5 rounded-lg text-[11px] uppercase tracking-wider">Draft</Badge>
-                  )}
-                </div>
-                <div className="absolute top-4 right-4">
-                  <Button size="icon" variant="secondary" className="w-8 h-8 rounded-full bg-white/20 hover:bg-white backdrop-blur-sm text-white hover:text-slate-900 transition-colors shadow-sm opacity-0 group-hover:opacity-100">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </div>
+            <div
+              key={course.id}
+              className="group bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 flex flex-col hover:-translate-y-1 border border-slate-100"
+            >
+              {/* Gradient Header */}
+              <Link href={`/teacher/courses/${course.id}`} className="relative block overflow-hidden">
+                <div
+                  className="h-[140px] w-full relative group-hover:scale-[1.02] transition-transform duration-500"
+                  style={{ background: course.gradient }}
+                >
+                  {/* Decorative circles */}
+                  <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-8 -left-4 w-20 h-20 rounded-full bg-white/8" />
+                  <div className="absolute top-1/2 right-1/4 w-10 h-10 rounded-full bg-white/5" />
 
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <h3 className="font-extrabold text-lg leading-tight line-clamp-2">{course.title}</h3>
+                  {/* Status Badge - top right */}
+                  <div className="absolute top-4 right-4">
+                    {course.status === "Published" ? (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-400 text-white shadow-md border border-emerald-300/50">
+                        Published
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-400 text-amber-900 shadow-md border border-amber-300/50">
+                        Draft
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Level Badge - bottom left */}
+                  {course.level && (
+                    <div className="absolute bottom-4 left-4">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-extrabold uppercase tracking-wider bg-slate-800/70 text-white backdrop-blur-sm shadow-sm">
+                        Level {course.level}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Link>
 
-              {/* Content */}
+              {/* White Content Area */}
               <div className="p-5 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1.5">
-                    <Star className={`w-4 h-4 ${course.rating > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
-                    <span className="text-sm font-bold text-slate-700">{course.rating > 0 ? course.rating : 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-bold text-slate-700">{course.students.toLocaleString()}</span>
-                  </div>
+                {/* Title */}
+                <Link href={`/teacher/courses/${course.id}`}>
+                  <h3 className="font-bold text-[15px] text-slate-800 leading-snug line-clamp-2 mb-3 group-hover:text-indigo-700 transition-colors min-h-[42px]">
+                    {course.title}
+                  </h3>
+                </Link>
+
+                {/* Star Rating */}
+                <div className="flex items-center gap-2 mb-4">
+                  {course.rating > 0 ? (
+                    <>
+                      <StarRating rating={course.rating} />
+                      <span className="text-sm font-semibold text-slate-500">({course.rating})</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">No ratings yet</span>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-4 text-[13px] font-semibold text-slate-500 mb-6">
-                  <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                    <BookOpen className="w-3.5 h-3.5 text-indigo-500" /> {course.lessons} Lessons
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                    <Clock className="w-3.5 h-3.5 text-emerald-500" /> {course.hours}h
-                  </div>
-                </div>
-
-                {course.status === 'Draft' && (
-                  <div className="mb-6 space-y-2">
-                    <div className="flex justify-between text-[11px] font-bold uppercase text-slate-500">
+                {/* Draft - Curriculum Progress */}
+                {course.status === "Draft" && (
+                  <div className="mb-4 space-y-1.5">
+                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       <span>Curriculum Progress</span>
                       <span className="text-indigo-600">{course.progress}%</span>
                     </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${course.progress}%` }}></div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-500"
+                        style={{ width: `${course.progress}%` }}
+                      />
                     </div>
                   </div>
                 )}
 
-                <div className="mt-auto grid grid-cols-2 gap-2">
-                  <Link href={`/teacher/courses/${course.id}`} className="col-span-2">
-                    <Button className="w-full bg-slate-50 hover:bg-indigo-50 text-indigo-700 font-bold border border-slate-200 hover:border-indigo-200 rounded-xl h-10 shadow-none transition-colors">
-                      {course.status === 'Published' ? 'Manage Course' : 'Continue Editing'}
+                {/* Stats Row */}
+                <div className="flex items-center gap-4 text-[13px] text-slate-500 mb-5">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-semibold">{course.students.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-semibold">{course.lessons} Lessons</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-semibold">{course.hours}h</span>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="mt-auto pt-1">
+                  <Link href={`/teacher/courses/${course.id}`} className="block">
+                    <Button className="w-full bg-white hover:bg-indigo-50 text-indigo-600 font-bold border-2 border-indigo-100 hover:border-indigo-300 rounded-xl h-11 shadow-none transition-all duration-200 text-[13px]">
+                      {course.status === "Published" ? "Manage Course" : "Continue Editing"}
                     </Button>
                   </Link>
                 </div>
@@ -159,3 +214,4 @@ export default function TeacherCoursesPage() {
     </DashboardLayout>
   );
 }
+
