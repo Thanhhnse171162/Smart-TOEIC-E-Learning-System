@@ -6,8 +6,7 @@ export const studentSidebarItems = [
   { href: "/student/vocabulary", label: "Vocabulary", icon: "BookOpen" },
   { href: "/student/ai-chat", label: "AI Chatbot", icon: "Bot" },
   { href: "/student/progress", label: "Progress", icon: "BarChart3" },
-  { href: "/student/profile", label: "Profile", icon: "User" },
-  { href: "/student/settings", label: "Settings", icon: "Settings" },
+  { href: "/student/profile", label: "Settings", icon: "Settings" },
 ];
 
 export const teacherSidebarItems = [
