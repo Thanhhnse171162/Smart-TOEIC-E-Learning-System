@@ -15,6 +15,7 @@ import {
   User,
   X,
   LogOut,
+  CheckCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const iconMap: Record<string, React.ElementType> = {
   BarChart3,
   User,
   Settings,
+  CheckCircle,
 };
 
 export interface SidebarItem {
