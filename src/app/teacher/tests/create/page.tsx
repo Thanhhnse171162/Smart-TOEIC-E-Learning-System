@@ -1,71 +1,144 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
-import { 
-  Search, 
-  ChevronDown, 
-  X, 
-  AlertTriangle,
-  CheckCircle2,
-  ArrowRight,
-  UploadCloud,
-  Eye,
-  Check,
-  Calendar,
-  Clock,
-  Edit3,
-  Headphones,
-  BookOpen,
-  Rocket,
-  BarChart,
-  Smile,
-  BarChart2,
-  TrendingUp
+import {
+  Search, ChevronDown, X, AlertTriangle, CheckCircle2, ArrowRight,
+  UploadCloud, Eye, Check, Calendar, Clock, Edit3, Headphones, BookOpen,
+  Rocket, Smile, BarChart2, TrendingUp, Filter, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+// TOEIC Constants
+const TOEIC_PARTS = [
+  { id: 1, name: "Part 1: Photographs", type: "Listening", required: 6 },
+  { id: 2, name: "Part 2: Question-Response", type: "Listening", required: 25 },
+  { id: 3, name: "Part 3: Conversations", type: "Listening", required: 39 },
+  { id: 4, name: "Part 4: Short Talks", type: "Listening", required: 30 },
+  { id: 5, name: "Part 5: Incomplete Sentences", type: "Reading", required: 30 },
+  { id: 6, name: "Part 6: Text Completion", type: "Reading", required: 16 },
+  { id: 7, name: "Part 7: Reading Comprehension", type: "Reading", required: 54 },
+];
+
+// Mock Question Bank (Simulating questions teacher has created)
+const MOCK_QUESTION_BANK = [
+  { id: "Q101", part: 1, text: "Look at the picture marked number 1 in your test book.", difficulty: "EASY", topic: "Daily Life", image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&q=80", options: ["A. They are sitting at a desk.", "B. They are looking at a laptop.", "C. They are leaving the office.", "D. They are drinking coffee."], correct: "B" },
+  { id: "Q102", part: 1, text: "Look at the picture marked number 2 in your test book.", difficulty: "MEDIUM", topic: "Office", image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&q=80", options: ["A. The man is holding a phone.", "B. The man is writing on a board.", "C. The man is typing on a keyboard.", "D. The man is arranging papers."], correct: "C" },
+  { id: "Q103", part: 1, text: "Look at the picture marked number 3 in your test book.", difficulty: "HARD", topic: "Travel", options: ["A. The bus is empty.", "B. They are boarding a plane.", "C. The luggage is on the carousel.", "D. The train is leaving."], correct: "A" },
+  { id: "Q104", part: 1, text: "Look at the picture marked number 4 in your test book.", difficulty: "EASY", topic: "Dining", options: ["A", "B", "C", "D"], correct: "A" },
+  { id: "Q105", part: 1, text: "Look at the picture marked number 5 in your test book.", difficulty: "MEDIUM", topic: "Traffic", options: ["A", "B", "C", "D"], correct: "A" },
+  { id: "Q106", part: 1, text: "Look at the picture marked number 6 in your test book.", difficulty: "HARD", topic: "Construction", options: ["A", "B", "C", "D"], correct: "A" },
+  { id: "Q107", part: 1, text: "Look at the picture marked number 7 in your test book.", difficulty: "EASY", topic: "Shopping", options: ["A", "B", "C", "D"], correct: "A" },
+  
+  { id: "Q201", part: 2, text: "Where is the nearest post office?", difficulty: "EASY", topic: "Directions", options: ["A. About two blocks away.", "B. At 5:00 PM.", "C. Yes, I can help you."], correct: "A" },
+  { id: "Q202", part: 2, text: "Who is responsible for the new project?", difficulty: "MEDIUM", topic: "Business", options: ["A. It's on the second floor.", "B. Ms. Davis is the manager.", "C. Tomorrow morning."], correct: "B" },
+  
+  { id: "Q301", part: 3, text: "Conversation about office supplies (Questions 32-34)", difficulty: "MEDIUM", topic: "Office", isGroup: true, subCount: 3, passage: "[Man]: Hi Sarah, do you know if we have any printer paper left?\n[Woman]: I think we ran out yesterday. I can order some more.\n[Man]: That would be great. Please order two boxes this time.", subQuestions: [ { text: "What are the speakers discussing?", options: ["A. A new printer", "B. Office supplies", "C. A work schedule", "D. A meeting time"], correct: "B" } ] },
+  { id: "Q401", part: 4, text: "Flight delay announcement (Questions 71-73)", difficulty: "HARD", topic: "Travel", isGroup: true, subCount: 3, passage: "Attention all passengers on Flight 4B to London. This flight has been delayed due to severe weather conditions..." },
+  
+  { id: "Q501", part: 5, text: "The board of directors _____ the new budget proposal.", difficulty: "MEDIUM", topic: "Grammar", options: ["A. approving", "B. was approved", "C. approved", "D. approve"], correct: "C" },
+  { id: "Q502", part: 5, text: "Please submit your application _____ Friday at 5 PM.", difficulty: "EASY", topic: "Vocabulary", options: ["A. in", "B. by", "C. on", "D. at"], correct: "B" },
+  
+  { id: "Q601", part: 6, text: "Email regarding policy change (Questions 131-134)", difficulty: "HARD", topic: "Business", isGroup: true, subCount: 4, passage: "To all employees,\nStarting next month, we will implement a new remote work policy..." },
+  { id: "Q701", part: 7, text: "Double passage: Advertisement and Email (176-180)", difficulty: "HARD", topic: "Shopping", isGroup: true, subCount: 5, passage: "[Advertisement] Grand opening of our new store!...\n\n[Email] Dear Manager, I saw your ad..." },
+];
+
 export default function CreateTestPage() {
   const [step, setStep] = useState(1);
-  const [smartSelect, setSmartSelect] = useState(true);
-
+  const [activePart, setActivePart] = useState(1); // Default to Part 1
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  const [difficultyFilter, setDifficultyFilter] = useState("All");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [previewQuestion, setPreviewQuestion] = useState<any>(null);
+  
+  // Basic Info State
+  const [testTitle, setTestTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [step1Error, setStep1Error] = useState("");
+  const [testType, setTestType] = useState("Full Test");
+  const [level, setLevel] = useState("Intermediate");
   const [testDuration, setTestDuration] = useState(120);
-  const [testQuestions, setTestQuestions] = useState(200);
-
-  const updateDuration = (val: number) => setTestDuration(prev => Math.max(10, prev + val));
-  const updateQuestions = (val: number) => setTestQuestions(prev => Math.max(10, prev + val));
-
-  // Image Upload State
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Derived state for selection
+  const displayedParts = useMemo(() => {
+    if (testType === "Listening Only") return TOEIC_PARTS.filter(p => p.type === "Listening");
+    if (testType === "Reading Only") return TOEIC_PARTS.filter(p => p.type === "Reading");
+    return TOEIC_PARTS;
+  }, [testType]);
+
+  const targetTotal = testType === "Full Test" ? 200 : 100;
+
+  const selectedCountsByPart = useMemo(() => {
+    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+    selectedQuestions.forEach(qId => {
+      const q = MOCK_QUESTION_BANK.find(x => x.id === qId);
+      if (q && displayedParts.some(p => p.id === q.part)) {
+        counts[q.part as keyof typeof counts] += (q.isGroup ? q.subCount : 1);
+      }
+    });
+    return counts;
+  }, [selectedQuestions, displayedParts]);
+
+  const totalSelected = Object.values(selectedCountsByPart).reduce((a, b) => a + b, 0);
+  const isFullySelected = displayedParts.every(p => selectedCountsByPart[p.id as keyof typeof selectedCountsByPart] === p.required);
+
+  const handleToggleQuestion = (qId: string) => {
+    setSelectedQuestions(prev => {
+      if (prev.includes(qId)) {
+        return prev.filter(id => id !== qId);
+      } else {
+        // Check constraints before adding
+        const q = MOCK_QUESTION_BANK.find(x => x.id === qId);
+        if (q) {
+          const currentCount = selectedCountsByPart[q.part as keyof typeof selectedCountsByPart];
+          const addingCount = q.isGroup ? q.subCount : 1;
+          const required = TOEIC_PARTS.find(p => p.id === q.part)?.required || 0;
+          
+          if (currentCount + addingCount > required) {
+            alert(`Cannot add. Part ${q.part} only requires ${required} questions (Currently have ${currentCount}).`);
+            return prev;
+          }
+        }
+        return [...prev, qId];
+      }
+    });
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setCoverImage(imageUrl);
-    }
+    if (file) setCoverImage(URL.createObjectURL(file));
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-
+  const triggerFileInput = () => fileInputRef.current?.click();
   const handleRemoveImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCoverImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const updateDuration = (val: number) => setTestDuration(prev => Math.max(10, prev + val));
+
+  const handleNextToStep2 = () => {
+    if (!testTitle.trim()) {
+      setStep1Error("Please enter a Test Title to proceed.");
+      return;
     }
+    setStep1Error("");
+    setStep(2);
   };
 
   const StepperHeader = () => (
@@ -84,217 +157,146 @@ export default function CreateTestPage() {
     </div>
   );
 
+  // --- STEP 1: Basic Info ---
   if (step === 1) {
     return (
       <DashboardLayout sidebarItems={teacherSidebarItems} title="" sidebarTitle="Teacher" headerContent={<StepperHeader />}>
         <div className="w-full max-w-[1400px] mx-auto pb-10 pt-2 px-4">
-          
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6">
             <h1 className="text-2xl font-bold text-slate-900">Create New Test</h1>
           </div>
-
-          {/* Form Card */}
-          <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden">
-            <div className="p-8">
-              <div className="flex flex-col xl:flex-row gap-12">
-                
-                {/* Left Column */}
-                <div className="flex-1 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div className="md:col-span-8 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Test Title <span className="text-rose-500">*</span></Label>
-                      <Input placeholder="e.g., Weekly Practice #12" className="h-12 rounded-xl border-slate-200 bg-white" />
-                    </div>
-                    
-                    <div className="md:col-span-4 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Test Type</Label>
-                      <div className="relative">
-                        <select className="w-full h-12 rounded-xl border border-slate-200 px-3 appearance-none bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                          <option>Full Test</option>
-                          <option>Listening Only</option>
-                          <option>Reading Only</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
+          <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden p-8">
+            <div className="flex flex-col xl:flex-row gap-12">
+              <div className="flex-1 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-8 space-y-2">
+                    <Label className="text-sm font-bold text-slate-700">Test Title <span className="text-rose-500">*</span></Label>
+                    <Input 
+                      value={testTitle} 
+                      onChange={e => {
+                        setTestTitle(e.target.value);
+                        if (e.target.value.trim()) setStep1Error("");
+                      }} 
+                      placeholder="e.g., Weekly Practice #12" 
+                      className={`h-12 rounded-xl ${step1Error ? 'border-rose-300 focus-visible:ring-rose-500 bg-rose-50/50' : ''}`} 
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                      <Label className="text-sm font-bold text-slate-700">Level</Label>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors relative h-[90px]">
-                          <input type="radio" name="level" className="w-4 h-4 text-indigo-600 border-slate-300 absolute left-3 top-3" />
-                          <div className="text-slate-400 mt-2"><Smile className="w-6 h-6"/></div>
-                          <span className="text-[13px] font-bold text-slate-600">Beginner</span>
-                        </div>
-                        <div className="border-2 border-indigo-600 bg-indigo-50/50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer relative overflow-hidden h-[90px]">
-                          <input type="radio" name="level" defaultChecked className="w-4 h-4 text-indigo-600 border-slate-300 absolute left-3 top-3 focus:ring-indigo-500" />
-                          <div className="text-indigo-600 mt-2"><BarChart2 className="w-6 h-6"/></div>
-                          <span className="text-[13px] font-bold text-indigo-700">Intermediate</span>
-                        </div>
-                        <div className="border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors relative h-[90px]">
-                          <input type="radio" name="level" className="w-4 h-4 text-indigo-600 border-slate-300 absolute left-3 top-3" />
-                          <div className="text-slate-400 mt-2"><TrendingUp className="w-6 h-6"/></div>
-                          <span className="text-[13px] font-bold text-slate-600">Advanced</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-bold text-slate-700">Test Configuration</Label>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Duration (min)</span>
-                          <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden h-11 bg-white focus-within:ring-2 focus-within:ring-indigo-500">
-                            <button onClick={() => updateDuration(-5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 hover:text-indigo-600 font-bold border-r border-slate-200 transition-colors">-</button>
-                            <input type="text" value={testDuration} onChange={(e) => setTestDuration(Number(e.target.value) || 0)} className="w-full text-center font-bold text-slate-700 text-sm focus:outline-none" />
-                            <button onClick={() => updateDuration(5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 hover:text-indigo-600 font-bold border-l border-slate-200 transition-colors">+</button>
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Questions</span>
-                          <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden h-11 bg-white focus-within:ring-2 focus-within:ring-indigo-500">
-                            <button onClick={() => updateQuestions(-5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 hover:text-indigo-600 font-bold border-r border-slate-200 transition-colors">-</button>
-                            <input type="text" value={testQuestions} onChange={(e) => setTestQuestions(Number(e.target.value) || 0)} className="w-full text-center font-bold text-slate-700 text-sm focus:outline-none" />
-                            <button onClick={() => updateQuestions(5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 hover:text-indigo-600 font-bold border-l border-slate-200 transition-colors">+</button>
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Est. time</span>
-                          <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden h-11 bg-slate-50 px-3">
-                            <span className="w-full text-center font-bold text-slate-600 text-sm">{Math.floor(testDuration/60)}h {String(testDuration%60).padStart(2, '0')}m</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-indigo-50/50 text-indigo-700 text-[12px] font-semibold px-4 py-2.5 rounded-xl border border-indigo-100 flex items-center gap-2 mt-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></div> Standard counts for a Full TOEIC test. Auto-filled.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-sm font-bold text-slate-700">Part Distribution Preview</Label>
-                      <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">Customize distribution</span>
-                    </div>
-                    <div className="flex flex-col bg-slate-50 border border-slate-100 rounded-2xl p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-5">
-                        <div className="space-y-5">
-                          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><Headphones className="w-3.5 h-3.5"/> Listening Section</h4>
-                          <div className="space-y-3.5">
-                            {[
-                              { name: "P1: Photographs", count: 6, percent: 100 },
-                              { name: "P2: Question-Response", count: 25, percent: 100 },
-                              { name: "P3: Conversations", count: 39, percent: 100 },
-                              { name: "P4: Short Talks", count: 30, percent: 100 },
-                            ].map((p, i) => (
-                              <div key={i} className="flex items-center gap-3 text-[13px] font-semibold text-slate-600">
-                                <span className="w-[140px] truncate">{p.name}</span>
-                                <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden flex">
-                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(p.count/39)*100}%` }}></div>
-                                </div>
-                                <span className="w-14 text-right font-bold text-slate-700">{p.count}q</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-5 relative">
-                          {/* Divider for desktop */}
-                          <div className="hidden md:block absolute -left-3 top-0 bottom-0 w-px bg-slate-200"></div>
-                          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><BookOpen className="w-3.5 h-3.5"/> Reading Section</h4>
-                          <div className="space-y-3.5">
-                            {[
-                              { name: "P5: Incomplete Sentences", count: 30, percent: 100 },
-                              { name: "P6: Text Completion", count: 16, percent: 100 },
-                              { name: "P7: Reading Comprehension", count: 54, percent: 100 },
-                            ].map((p, i) => (
-                              <div key={i} className="flex items-center gap-3 text-[13px] font-semibold text-slate-600">
-                                <span className="w-[160px] truncate">{p.name}</span>
-                                <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden flex">
-                                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(p.count/54)*100}%` }}></div>
-                                </div>
-                                <span className="w-14 text-right font-bold text-slate-700">{p.count}q</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t border-[#E0E7FF] pt-4 mt-1 text-center text-[13px] text-slate-500 font-medium">
-                        <span className="font-bold text-slate-700">Total:</span> {testQuestions} questions &nbsp;&nbsp;|&nbsp;&nbsp; <span className="font-bold text-slate-700">Listening:</span> {Math.floor(testQuestions/2)} &nbsp;&nbsp;|&nbsp;&nbsp; <span className="font-bold text-slate-700">Reading:</span> {Math.ceil(testQuestions/2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-700">Description</Label>
-                    <Textarea placeholder="Enter teacher notes or student instructions here..." className="rounded-xl border-slate-200 min-h-[100px] resize-none text-sm p-4 bg-slate-50 focus:bg-white transition-colors" />
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div className="w-full xl:w-[320px] shrink-0 space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-700">Cover Image</Label>
-                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
-                    {!coverImage ? (
-                      <div onClick={triggerFileInput} className="border-2 border-dashed border-slate-200 rounded-2xl h-[200px] flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:border-slate-300 cursor-pointer transition-all bg-white group">
-                        <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                          <UploadCloud className="w-6 h-6 text-indigo-500" />
-                        </div>
-                        <span className="text-[13px] font-medium text-slate-500">Drop image here or <span className="text-indigo-600 font-bold">browse</span></span>
-                      </div>
-                    ) : (
-                      <div className="relative border border-slate-200 rounded-2xl h-[200px] overflow-hidden group shadow-sm">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={coverImage} alt="Cover Preview" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                          <Button size="sm" variant="secondary" onClick={triggerFileInput} className="h-9 px-4 rounded-xl text-xs font-bold shadow-sm">Change Image</Button>
-                          <Button size="sm" variant="destructive" onClick={handleRemoveImage} className="h-9 px-4 rounded-xl text-xs font-bold shadow-sm">Remove</Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 space-y-5">
-                    <h3 className="text-[15px] font-bold text-slate-800">Test Summary</h3>
-                    <div className="space-y-3.5 text-[13px]">
-                      <div className="flex justify-between items-center font-medium">
-                        <span className="text-slate-500">Type</span><span className="text-slate-800 font-bold bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">Full Test</span>
-                      </div>
-                      <div className="flex justify-between items-center font-medium">
-                        <span className="text-slate-500">Duration</span><span className="text-slate-800 font-bold bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">120 min</span>
-                      </div>
-                      <div className="flex justify-between items-center font-medium">
-                        <span className="text-slate-500">Questions</span><span className="text-slate-800 font-bold bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">200</span>
-                      </div>
-                      <div className="h-px bg-slate-200 my-4"></div>
-                      <div className="flex justify-between items-center font-medium">
-                        <span className="text-slate-500">Level</span>
-                        <div className="flex items-center gap-1.5 text-indigo-700 font-bold bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                          <BarChart2 className="w-3.5 h-3.5"/> Intermediate
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center font-medium">
-                        <span className="text-slate-500">L/R Split</span><span className="text-slate-800 font-bold">100L / 100R</span>
-                      </div>
+                  <div className="md:col-span-4 space-y-2">
+                    <Label className="text-sm font-bold text-slate-700">Test Type</Label>
+                    <div className="relative">
+                      <select value={testType} onChange={e => setTestType(e.target.value)} className="w-full h-12 rounded-xl border border-slate-200 px-3 appearance-none font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option>Full Test</option>
+                        <option>Listening Only</option>
+                        <option>Reading Only</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold text-slate-700">Level</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { id: "Beginner", icon: Smile },
+                        { id: "Intermediate", icon: BarChart2 },
+                        { id: "Advanced", icon: TrendingUp },
+                      ].map((lvl) => {
+                        const Icon = lvl.icon;
+                        const isActive = level === lvl.id;
+                        return (
+                          <div
+                            key={lvl.id}
+                            onClick={() => setLevel(lvl.id)}
+                            className={`rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer relative h-[90px] transition-all ${
+                              isActive
+                                ? 'border-2 border-indigo-600 bg-indigo-50/50'
+                                : 'border border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="level"
+                              checked={isActive}
+                              onChange={() => setLevel(lvl.id)}
+                              className="w-4 h-4 text-indigo-600 border-slate-300 absolute left-3 top-3 focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <div className={`mt-2 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+                              <Icon className="w-6 h-6" />
+                            </div>
+                            <span className={`text-[13px] font-bold ${isActive ? 'text-indigo-700' : 'text-slate-600'}`}>
+                              {lvl.id}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold text-slate-700">Test Configuration</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Duration (min)</span>
+                        <div className="flex items-center border border-slate-200 rounded-lg h-11 bg-white focus-within:ring-2 focus-within:ring-indigo-500">
+                          <button onClick={() => updateDuration(-5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 font-bold border-r border-slate-200">-</button>
+                          <input type="text" value={testDuration} onChange={(e) => setTestDuration(Number(e.target.value) || 0)} className="w-full text-center font-bold text-slate-700 text-sm focus:outline-none" />
+                          <button onClick={() => updateDuration(5)} className="px-3 h-full hover:bg-slate-50 text-slate-400 font-bold border-l border-slate-200">+</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Questions</span>
+                        <div className="flex items-center border border-slate-200 rounded-lg h-11 bg-slate-50 px-3">
+                          <span className="w-full text-center font-bold text-slate-600 text-sm">{targetTotal} (Fixed)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-indigo-50/50 text-indigo-700 text-[12px] font-semibold px-4 py-2.5 rounded-xl border border-indigo-100 flex items-center gap-2 mt-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></div> {testType === "Full Test" ? "Standard TOEIC requirement (200 questions)." : `Standard ${testType} requirement (${targetTotal} questions).`}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-700">Description</Label>
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter teacher notes or instructions here..." className="rounded-xl border-slate-200 min-h-[100px] resize-none text-sm p-4 bg-slate-50" />
+                </div>
+              </div>
+
+              <div className="w-full xl:w-[320px] shrink-0 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-slate-700">Cover Image</Label>
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                  {!coverImage ? (
+                    <div onClick={triggerFileInput} className="border-2 border-dashed border-slate-200 rounded-2xl h-[200px] flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 cursor-pointer">
+                      <UploadCloud className="w-6 h-6 text-indigo-500 mb-3" />
+                      <span className="text-[13px] font-medium text-slate-500">Drop image or <span className="text-indigo-600 font-bold">browse</span></span>
+                    </div>
+                  ) : (
+                    <div className="relative border border-slate-200 rounded-2xl h-[200px] overflow-hidden group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={coverImage} alt="Cover Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <Button size="sm" variant="secondary" onClick={triggerFileInput}>Change Image</Button>
+                        <Button size="sm" variant="destructive" onClick={handleRemoveImage}>Remove</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className="flex justify-between items-center px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+            {step1Error && (
+              <div className="mt-6 bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> {step1Error}
+              </div>
+            )}
+            <div className="flex justify-between items-center mt-8 pt-5 border-t border-slate-100">
               <Link href="/teacher/tests">
-                <Button variant="outline" className="rounded-xl px-6 h-11 text-slate-600 font-bold border-slate-200 hover:bg-white hover:text-slate-900 bg-white">
-                  Cancel
-                </Button>
+                <Button variant="outline" className="rounded-xl px-6 h-11 font-bold">Cancel</Button>
               </Link>
-              <Button onClick={() => setStep(2)} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white px-8 h-11 gap-2 font-bold shadow-sm">
-                Next: Select Questions <ArrowRight className="w-4 h-4" />
+              <Button onClick={handleNextToStep2} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white px-8 h-11 font-bold">
+                Next: Select Questions <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </Card>
@@ -303,656 +305,357 @@ export default function CreateTestPage() {
     );
   }
 
-  if (step === 3) {
+  // --- STEP 2: Select Questions ---
+  if (step === 2) {
+    const safeActivePartId = displayedParts.find(p => p.id === activePart) ? activePart : displayedParts[0].id;
+    const activePartInfo = TOEIC_PARTS.find(p => p.id === safeActivePartId)!;
+    const questionsForActivePart = MOCK_QUESTION_BANK.filter(q => q.part === safeActivePartId && (difficultyFilter === "All" || q.difficulty === difficultyFilter));
+    const activeSelectedCount = selectedCountsByPart[safeActivePartId as keyof typeof selectedCountsByPart];
+    
+    const totalPages = Math.max(1, Math.ceil(questionsForActivePart.length / itemsPerPage));
+    const paginatedQuestions = questionsForActivePart.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
       <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
-        {/* Header */}
-        <header className="h-[60px] bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
-          <div className="flex items-center text-[15px] font-bold text-[#1e293b]">
-            <span className="text-indigo-600 mr-3">SmartTOEIC</span>
-            <span className="text-slate-300 font-normal mr-3">|</span> 
-            Create New Test
-          </div>
-          
-          {/* Top Stepper */}
-          <div className="flex items-center gap-4 text-xs font-bold">
-            <div className="flex items-center gap-2 text-[#10b981]">
-              <CheckCircle2 className="w-5 h-5 fill-[#10b981] text-white" />
-              Test Info
-            </div>
-            <div className="w-16 h-px bg-[#10b981]"></div>
-            <div className="flex items-center gap-2 text-[#10b981]">
-              <CheckCircle2 className="w-5 h-5 fill-[#10b981] text-white" />
-              Question Selection
-            </div>
-            <div className="w-16 h-px bg-slate-200"></div>
-            <div className="flex items-center gap-2 text-[#4f46e5]">
-              <div className="w-5 h-5 rounded-full bg-[#4f46e5] text-white flex items-center justify-center">3</div>
-              Review & Publish
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#10b981]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981]"></div>
-              Auto-saved
-            </div>
-            <div className="h-8 w-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            </div>
-          </div>
+        <header className="h-[60px] bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
+          <div className="text-[15px] font-bold text-[#1e293b]">Create New Test</div>
+          <StepperHeader />
+          <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">T</div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6 md:p-8">
-          <div className="mx-auto max-w-[1400px]">
-            {/* Page Header */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div>
-                <h1 className="text-[32px] font-extrabold text-slate-900 tracking-tight mb-2">Review & Publish</h1>
-                <p className="text-slate-500 font-medium text-[15px]">Verify your test details and structure before making it available to students.</p>
+        <main className="flex-1 flex overflow-hidden p-4 gap-4 h-[calc(100vh-120px)]">
+          
+          {/* LEFT: PART SELECTION & QUOTA */}
+          <div className="w-[300px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="font-bold text-sm text-slate-800 flex justify-between">
+                Total Progress
+                <span className={`${totalSelected === targetTotal ? 'text-emerald-600' : 'text-indigo-600'}`}>{totalSelected} / {targetTotal}</span>
+              </h3>
+              <Progress value={(totalSelected/targetTotal)*100} className={`h-2 mt-2 ${totalSelected === targetTotal ? '[&>div]:bg-emerald-500' : '[&>div]:bg-indigo-600'}`} />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="space-y-1">
+                {displayedParts.map(part => {
+                  const current = selectedCountsByPart[part.id as keyof typeof selectedCountsByPart];
+                  const isComplete = current === part.required;
+                  const isActive = safeActivePartId === part.id;
+                  
+                  return (
+                    <div 
+                      key={part.id}
+                      onClick={() => { setActivePart(part.id); setCurrentPage(1); }}
+                      className={`p-3 rounded-xl cursor-pointer transition-all border ${
+                        isActive ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'border-transparent hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className={`text-sm font-bold ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>Part {part.id}</span>
+                        <span className={`text-xs font-bold ${isComplete ? 'text-emerald-600 flex items-center gap-1' : 'text-slate-500'}`}>
+                          {current}/{part.required} {isComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 line-clamp-1">{part.name.split(': ')[1]}</div>
+                      <Progress value={(current/part.required)*100} className={`h-1.5 mt-2 ${isComplete ? '[&>div]:bg-emerald-500' : '[&>div]:bg-slate-400'}`} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              
-              {/* Left Column (Spans 8) */}
-              <div className="xl:col-span-8 space-y-8">
-                
-                {/* Info Card */}
-                <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden transition-all duration-200 hover:shadow-md">
-                  <div className="p-8">
-                    <div className="flex justify-between items-start mb-8">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none shadow-none rounded-md px-2.5 py-0.5 text-xs font-bold">MOCK TEST</Badge>
-                          <span className="text-sm font-semibold text-slate-400">Created today</span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-800">Summer Mock Test 2024</h2>
-                      </div>
-                      <Button onClick={() => setStep(1)} variant="outline" className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-100 rounded-xl h-10 px-5 transition-colors">
-                        <Edit3 className="w-4 h-4" /> Edit Info
-                      </Button>
-                    </div>
-                    
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-center items-start group hover:border-indigo-100 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="p-1.5 bg-white rounded-md shadow-sm border border-slate-100 text-indigo-500 group-hover:text-indigo-600">
-                            <Clock className="w-4 h-4" />
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Duration</p>
-                        </div>
-                        <p className="text-lg font-bold text-slate-800">120 mins</p>
+            <div className="p-4 border-t border-slate-100">
+              <Button variant="outline" className="w-full text-xs font-bold gap-2">
+                <Rocket className="w-4 h-4 text-indigo-600" /> Auto-fill Remaining (Smart Select)
+              </Button>
+            </div>
+          </div>
+
+          {/* MIDDLE: QUESTION BANK FOR ACTIVE PART */}
+          <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  {activePartInfo.type === 'Listening' ? <Headphones className="w-5 h-5 text-indigo-500" /> : <BookOpen className="w-5 h-5 text-emerald-500" />}
+                  {activePartInfo.name}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 font-medium">Select {activePartInfo.required} questions to meet TOEIC standard for this part.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input placeholder="Search question..." className="h-9 w-48 pl-9 rounded-lg border-slate-200 text-sm bg-slate-50" />
+                </div>
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  {["All", "EASY", "MEDIUM", "HARD"].map(d => (
+                    <button 
+                      key={d}
+                      onClick={() => { setDifficultyFilter(d); setCurrentPage(1); }}
+                      className={`px-2.5 py-1 text-[11px] uppercase tracking-wider font-bold rounded-md transition-colors ${difficultyFilter === d ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-2 flex justify-between items-center border-b border-slate-100 px-4">
+              <span className="text-xs font-bold text-slate-500 uppercase">Available in Bank: {questionsForActivePart.length}</span>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${activeSelectedCount === activePartInfo.required ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                Selected: {activeSelectedCount} / {activePartInfo.required}
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col bg-slate-50/30">
+              <div className="space-y-3 flex-1">
+                {paginatedQuestions.length === 0 ? (
+                  <div className="text-center py-10 text-slate-500">No questions found in bank for this part.</div>
+                ) : (
+                  paginatedQuestions.map(q => {
+                  const isSelected = selectedQuestions.includes(q.id);
+                  const isGroup = q.isGroup;
+                  
+                  return (
+                    <div 
+                      key={q.id} 
+                      onClick={() => handleToggleQuestion(q.id)}
+                      className={`border rounded-xl p-4 flex items-start gap-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                        isSelected 
+                          ? 'border-indigo-500 bg-indigo-50/40 shadow-sm ring-1 ring-indigo-100' 
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-2 border-slate-300'
+                      }`}>
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
                       </div>
                       
-                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-center items-start group hover:border-indigo-100 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="p-1.5 bg-white rounded-md shadow-sm border border-slate-100 text-indigo-500 group-hover:text-indigo-600">
-                            <BookOpen className="w-4 h-4" />
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-4 mb-2">
+                          <p className={`text-sm font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'}`}>
+                            {q.text}
+                          </p>
+                          <div className="flex gap-2 shrink-0">
+                            <Badge variant="outline" className="text-[10px] font-bold bg-white text-slate-600">{q.topic}</Badge>
+                            <Badge className={`text-[10px] font-bold shadow-none ${
+                              q.difficulty === 'EASY' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
+                              q.difficulty === 'MEDIUM' ? 'bg-amber-100 text-amber-700 hover:bg-amber-100' :
+                              'bg-rose-100 text-rose-700 hover:bg-rose-100'
+                            }`}>{q.difficulty}</Badge>
                           </div>
-                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Items</p>
                         </div>
-                        <p className="text-lg font-bold text-slate-800">200 items</p>
-                      </div>
-
-                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-center items-start group hover:border-indigo-100 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="p-1.5 bg-white rounded-md shadow-sm border border-slate-100 text-indigo-500 group-hover:text-indigo-600">
-                            <BarChart className="w-4 h-4" />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID: #{q.id}</span>
+                            {isGroup && (
+                              <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" /> Group: {q.subCount} Questions
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Level</p>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold text-xs shadow-none border border-indigo-100"
+                            onClick={(e) => { e.stopPropagation(); setPreviewQuestion(q); }}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1" /> View Details
+                          </Button>
                         </div>
-                        <p className="text-lg font-bold text-slate-800">Intermediate</p>
-                      </div>
-
-                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-center items-start group hover:border-indigo-100 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="p-1.5 bg-white rounded-md shadow-sm border border-slate-100 text-indigo-500 group-hover:text-indigo-600">
-                            <Headphones className="w-4 h-4" />
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">L/R Split</p>
-                        </div>
-                        <p className="text-lg font-bold text-slate-800">100 <span className="text-slate-400 font-medium text-sm mx-1">/</span> 100</p>
                       </div>
                     </div>
-                    
-                    <div className="bg-slate-50/50 p-5 rounded-xl border border-slate-100">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">DESCRIPTION</p>
-                      <p className="text-[14px] text-slate-600 leading-relaxed font-medium">
-                        Standard TOEIC mock test for final semester evaluation. This test covers all parts from Listening to Reading, following the latest ETS format guidelines for 2024. Make sure students have a quiet environment before starting. <span className="text-indigo-600 font-bold cursor-pointer hover:underline ml-1">Show less</span>
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Structure Card */}
-                <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden transition-all duration-200 hover:shadow-md">
-                  <div className="p-8">
-                    <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
-                      <div>
-                        <h2 className="text-xl font-bold text-slate-800 mb-1">Test Structure</h2>
-                        <p className="text-sm text-slate-500 font-medium">Detailed breakdown of the 200 questions</p>
-                      </div>
-                      <Button onClick={() => setStep(2)} variant="outline" className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-100 rounded-xl h-10 px-5 transition-colors">
-                        Edit Questions <Edit3 className="w-4 h-4" />
+                  );
+                })
+              )}
+              </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-200">
+                  <span className="text-[11px] font-bold text-slate-500">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, questionsForActivePart.length)} of {questionsForActivePart.length}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-50 text-xs"
+                    >
+                      Prev
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-8 w-8 rounded-lg font-bold text-xs ${
+                          currentPage === page 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' 
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        {page}
                       </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                      {/* Listening */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-3 text-sm font-bold text-[#4f46e5] uppercase tracking-wider mb-6 bg-indigo-50 w-max px-4 py-2 rounded-lg border border-indigo-100">
-                          <Headphones className="w-4 h-4" /> Listening Section (100)
-                        </div>
-                        <div className="space-y-5">
-                          {[
-                            { name: "Part 1: Photographs", count: 6, percent: 6, color: "bg-[#4f46e5]" },
-                            { name: "Part 2: Question-Response", count: 25, percent: 25, color: "bg-[#6366f1]" },
-                            { name: "Part 3: Conversations", count: 39, percent: 39, color: "bg-[#818cf8]" },
-                            { name: "Part 4: Short Talks", count: 30, percent: 30, color: "bg-[#a5b4fc]" }
-                          ].map((part, i) => (
-                            <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{part.name}</p>
-                                <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">{part.count} Qs</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-                                <div className={`h-full rounded-full ${part.color} transition-all duration-500`} style={{ width: `${part.percent}%` }}></div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Reading */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-3 text-sm font-bold text-[#10b981] uppercase tracking-wider mb-6 bg-emerald-50 w-max px-4 py-2 rounded-lg border border-emerald-100">
-                          <BookOpen className="w-4 h-4" /> Reading Section (100)
-                        </div>
-                        <div className="space-y-5">
-                          {[
-                            { name: "Part 5: Incomplete Sentences", count: 30, percent: 30, color: "bg-[#10b981]" },
-                            { name: "Part 6: Text Completion", count: 16, percent: 16, color: "bg-[#34d399]" },
-                            { name: "Part 7: Reading Comprehension", count: 54, percent: 54, color: "bg-[#6ee7b7]" }
-                          ].map((part, i) => (
-                            <div key={i} className="group">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{part.name}</p>
-                                <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">{part.count} Qs</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-                                <div className={`h-full rounded-full ${part.color} transition-all duration-500`} style={{ width: `${part.percent}%` }}></div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-50 text-xs"
+                    >
+                      Next
+                    </Button>
                   </div>
-                </Card>
-              </div>
-
-              {/* Right Column */}
-              <div className="xl:col-span-4 space-y-8">
-                
-                {/* Publish Settings */}
-                <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden">
-                  <div className="p-7 space-y-7">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-1 h-4 bg-indigo-600 rounded-full"></div>
-                      <h2 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider">Publish Settings</h2>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <Label className="text-sm font-bold text-slate-700">Access Control</Label>
-                      <div className="relative">
-                        <select className="w-full h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-slate-50 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-700">
-                          <option>Class Only</option>
-                          <option>Public</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <Badge className="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 text-[11px] shadow-sm rounded-lg flex gap-1.5 items-center"><Check className="w-3 h-3"/> Class A</Badge>
-                        <Badge className="bg-white text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 text-[11px] shadow-none border border-indigo-200 rounded-lg">Class B</Badge>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-px bg-slate-100"></div>
-
-                    <div className="space-y-4">
-                      <Label className="text-sm font-bold text-slate-700">Scheduling</Label>
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 p-3 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                          <input type="radio" name="schedule" className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
-                          <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-800">Publish Immediately</span>
-                        </label>
-                        <div className="border border-indigo-200 bg-indigo-50/30 rounded-xl overflow-hidden transition-colors">
-                          <label className="flex items-center gap-3 cursor-pointer p-3 pb-2">
-                            <input type="radio" name="schedule" defaultChecked className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-indigo-700">Schedule for later</span>
-                          </label>
-                          <div className="p-3 pt-0 flex gap-2">
-                            <div className="relative flex-1">
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
-                              <Input defaultValue="Oct 26, 2024" className="h-10 pl-9 rounded-lg border-indigo-100 bg-white text-[13px] font-semibold text-slate-700 shadow-sm" />
-                            </div>
-                            <div className="relative w-28">
-                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400" />
-                              <Input defaultValue="09:00 AM" className="h-10 pl-9 rounded-lg border-indigo-100 bg-white text-[13px] font-semibold text-slate-700 shadow-sm px-2" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-px bg-slate-100"></div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Results Visibility</Label>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <div>
-                          <span className="text-sm font-semibold text-slate-700 block mb-0.5">Show results instantly</span>
-                          <span className="text-[11px] text-slate-500">Students see scores right away</span>
-                        </div>
-                        <Switch defaultChecked className="data-[state=checked]:bg-indigo-600" />
-                      </div>
-                    </div>
-
-                  </div>
-                </Card>
-
-                {/* Final Checks */}
-                <Card className="rounded-2xl border-emerald-100 shadow-sm bg-gradient-to-b from-emerald-50/50 to-white overflow-hidden">
-                  <div className="p-7">
-                    <div className="flex items-center gap-2 mb-5">
-                      <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
-                      <h2 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider">System Checks</h2>
-                    </div>
-                    
-                    <ul className="space-y-4">
-                      {[
-                        "200/200 questions selected",
-                        "69 audio files attached and verified",
-                        "200/200 answers validated",
-                        "7/7 part distribution complete"
-                      ].map((text, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                            <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                          </div>
-                          <span className="text-[13px] font-semibold text-slate-700 leading-snug">{text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </Card>
-
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="h-[72px] bg-white border-t border-slate-200 z-20 flex items-center justify-between px-6 md:px-10 shrink-0 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm uppercase tracking-wider">
-              <div className="w-2 h-2 rounded-full bg-emerald-500"></div> READY TO PUBLISH
-            </div>
-            <span className="text-[13px] font-medium text-slate-500 italic hidden sm:block">All systems verified</span>
+        <footer className="h-[64px] bg-white border-t border-slate-200 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            {!isFullySelected && (
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg text-sm font-bold border border-amber-200">
+                <AlertCircle className="w-4 h-4" /> Please select exactly {targetTotal} questions to proceed
+              </div>
+            )}
+            {isFullySelected && (
+              <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4" /> {targetTotal}/{targetTotal} Questions Selected - Ready to proceed
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={() => setStep(2)} variant="outline" className="font-bold rounded-xl h-11 px-6 border-slate-200 text-slate-700">
-              Back to Selection
+            <Button onClick={() => setStep(1)} variant="outline" className="font-bold rounded-xl h-10 px-6">Back</Button>
+            <Button onClick={() => setStep(3)} disabled={!isFullySelected} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-8">
+              Review & Publish <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button variant="outline" className="font-bold rounded-xl h-11 px-6 border-slate-200 text-slate-700 gap-2 hidden sm:flex">
-              <Eye className="w-4 h-4" /> Preview as Student
-            </Button>
-            <Link href="/teacher/tests">
-              <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-11 px-6 shadow-sm gap-2">
-                Confirm & Publish Test <Rocket className="w-4 h-4" />
-              </Button>
-            </Link>
           </div>
         </footer>
+
+        {/* PREVIEW MODAL */}
+        {previewQuestion && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewQuestion(null)}>
+            <div 
+              className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-4 px-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-indigo-100 text-indigo-700 shadow-none font-bold text-[11px]">Part {previewQuestion.part}</Badge>
+                  <h3 className="font-bold text-slate-800 text-[15px]">Question Details</h3>
+                </div>
+                <button onClick={() => setPreviewQuestion(null)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#f8fafc]">
+                {/* Media / Passage Area */}
+                {(previewQuestion.image || previewQuestion.passage) && (
+                  <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-3 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                      {previewQuestion.image ? <Eye className="w-4 h-4"/> : <BookOpen className="w-4 h-4"/>}
+                      {previewQuestion.image ? 'Image Source' : 'Context / Passage'}
+                    </div>
+                    {previewQuestion.image && (
+                      <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm w-[300px]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={previewQuestion.image} alt="Question media" className="w-full h-auto object-cover" />
+                      </div>
+                    )}
+                    {previewQuestion.passage && (
+                      <div className="text-[14px] text-slate-700 font-medium whitespace-pre-wrap leading-relaxed">
+                        {previewQuestion.passage}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Question Text & Options */}
+                <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-5">
+                  <h4 className="text-[15px] font-bold text-slate-900 mb-4 leading-snug">
+                    {previewQuestion.text}
+                  </h4>
+                  
+                  {previewQuestion.isGroup && previewQuestion.subQuestions ? (
+                    <div className="space-y-6 border-l-2 border-indigo-100 pl-4">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {previewQuestion.subQuestions.map((sq: any, i: number) => (
+                        <div key={i} className="space-y-3">
+                          <p className="font-semibold text-[14px] text-slate-800">{i+1}. {sq.text}</p>
+                          <div className="space-y-2">
+                            {sq.options?.map((opt: string, j: number) => {
+                              const isCorrect = sq.correct === opt.charAt(0);
+                              return (
+                                <div key={j} className={`p-3 rounded-lg border text-[13px] font-semibold flex justify-between items-center ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                                  {opt}
+                                  {isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {previewQuestion.options?.map((opt: string, j: number) => {
+                        const isCorrect = previewQuestion.correct === opt.charAt(0);
+                        return (
+                          <div key={j} className={`p-3.5 rounded-lg border text-[13px] font-semibold flex justify-between items-center ${isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-800 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                            {opt}
+                            {isCorrect && <Badge className="bg-emerald-500 text-white shadow-none text-[10px]">CORRECT</Badge>}
+                          </div>
+                        );
+                      })}
+                      {!previewQuestion.options && (
+                        <p className="text-slate-400 italic text-sm">No options provided in this preview.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-4 px-6 border-t border-slate-100 bg-white flex justify-end">
+                <Button onClick={() => setPreviewQuestion(null)} className="font-bold rounded-xl h-10 px-6">Close Preview</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // STEP 2: QUESTION SELECTION
-
+  // --- STEP 3: Review & Publish (Simplified for brevity) ---
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
-      {/* Header */}
-      <header className="h-[60px] bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
-        <div className="flex items-center text-[15px] font-bold text-[#1e293b]">
-          <span className="text-indigo-600 mr-3">SmartTOEIC</span>
-          <span className="text-slate-300 font-normal mr-3">|</span> 
-          Create New Test
-        </div>
-        
-        {/* Top Stepper */}
-        <div className="flex items-center gap-4 text-xs font-bold">
-          <div className="flex items-center gap-2 text-[#10b981]">
-            <CheckCircle2 className="w-5 h-5 fill-[#10b981] text-white" />
-            Test Info
+    <DashboardLayout sidebarItems={teacherSidebarItems} title="" sidebarTitle="Teacher" headerContent={<StepperHeader />}>
+      <div className="w-full max-w-[800px] mx-auto pb-10 pt-10 px-4 space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900 text-center">Review & Publish</h1>
+        <Card className="p-8 space-y-6">
+          <div className="flex justify-between border-b pb-4">
+            <h2 className="text-xl font-bold">{testTitle || 'Untitled Test'}</h2>
+            <Badge className="bg-emerald-100 text-emerald-700">Ready</Badge>
           </div>
-          <div className="w-16 h-px bg-slate-200"></div>
-          <div className="flex items-center gap-2 text-[#4f46e5]">
-            <div className="w-5 h-5 rounded-full bg-[#4f46e5] text-white flex items-center justify-center">2</div>
-            Question Selection
+          <div className="grid grid-cols-2 gap-4">
+            <div><p className="text-sm text-slate-500">Duration</p><p className="font-bold">{testDuration} mins</p></div>
+            <div><p className="text-sm text-slate-500">Questions</p><p className="font-bold">{targetTotal} items ({testType})</p></div>
           </div>
-          <div className="flex items-center gap-1 text-slate-300">
-            <span className="tracking-widest">------</span>
+          <div className="flex justify-between pt-6">
+            <Button variant="outline" onClick={() => setStep(2)}>Back to edit</Button>
+            <Link href="/teacher/tests">
+              <Button className="bg-[#4f46e5] text-white">Publish Test</Button>
+            </Link>
           </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <div className="w-5 h-5 rounded-full border-2 border-slate-200 text-slate-400 flex items-center justify-center">3</div>
-            Review & Publish
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#10b981]">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#10b981]"></div>
-            Auto-saved 1 min ago
-          </div>
-          <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            T
-          </div>
-        </div>
-      </header>
-
-      {/* Main Layout */}
-      <main className="flex-1 flex overflow-hidden p-4 gap-4 h-[calc(100vh-120px)]">
-        
-        {/* LEFT PANEL */}
-        <div className="w-[280px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
-          <div className="p-5 flex flex-col gap-6 overflow-y-auto">
-            {/* Quota */}
-            <div>
-              <div className="flex justify-between items-end mb-3">
-                <h3 className="font-bold text-sm text-slate-800">Part Quota</h3>
-                <span className="font-bold text-lg text-indigo-600">45/200</span>
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-500">P1 PHOTOGRAPHS</span>
-                    <span className="text-[#10b981] flex items-center gap-1">6/6 <Check className="w-3 h-3"/></span>
-                  </div>
-                  <Progress value={100} className="h-1.5 bg-slate-100 [&>div]:bg-[#10b981]" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-500">P3 CONVERSATIONS</span>
-                    <span className="text-rose-500">0/39</span>
-                  </div>
-                  <Progress value={0} className="h-1.5 bg-slate-100" />
-                </div>
-                <Progress value={22.5} className="h-2 mt-4 bg-slate-100 [&>div]:bg-indigo-600" />
-              </div>
-            </div>
-
-            <div className="h-px bg-slate-100"></div>
-
-            {/* Filter by Part */}
-            <div>
-              <h3 className="font-bold text-xs text-slate-500 mb-3 uppercase tracking-wider">Filter by Part</h3>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between cursor-pointer group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded bg-indigo-600 text-white flex items-center justify-center">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">Part 1</span>
-                  </div>
-                  <span className="text-xs text-slate-400 font-semibold">42</span>
-                </label>
-                <label className="flex items-center justify-between cursor-pointer group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded border-2 border-slate-200 bg-white group-hover:border-slate-300"></div>
-                    <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">Part 2</span>
-                  </div>
-                  <span className="text-xs text-slate-400 font-semibold">128</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Topic */}
-            <div>
-              <h3 className="font-bold text-xs text-slate-500 mb-3 uppercase tracking-wider">Topic</h3>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <Input placeholder="Search topics..." className="h-9 pl-9 rounded-lg border-slate-200 text-sm bg-slate-50" />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full px-3 py-1 cursor-pointer">Business</Badge>
-                <Badge variant="outline" className="border-slate-200 text-slate-600 font-semibold rounded-full px-3 py-1 cursor-pointer hover:bg-slate-50">Travel</Badge>
-                <Badge variant="outline" className="border-slate-200 text-slate-600 font-semibold rounded-full px-3 py-1 cursor-pointer hover:bg-slate-50">Office</Badge>
-              </div>
-            </div>
-
-            {/* Difficulty */}
-            <div>
-              <h3 className="font-bold text-xs text-slate-500 mb-3 uppercase tracking-wider">Difficulty</h3>
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-200 group-hover:border-slate-300"></div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#10b981]"></div>
-                    <span className="text-sm font-semibold text-slate-700">Easy</span>
-                  </div>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="w-4 h-4 rounded-full border-[5px] border-indigo-600"></div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                    <span className="text-sm font-semibold text-slate-700">Medium</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Smart Select Card */}
-            <div className="mt-auto pt-4">
-              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
-                    <span className="text-xl">🤖</span> Smart Select
-                  </div>
-                  <Switch checked={smartSelect} onCheckedChange={setSmartSelect} className="data-[state=checked]:bg-indigo-600 shadow-sm" />
-                </div>
-                <ul className="space-y-2 mb-4">
-                  <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                    <div className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 shrink-0"></div>
-                    Matches your historical class performance
-                  </li>
-                  <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                    <div className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 shrink-0"></div>
-                    Balances all 7 TOEIC parts automatically
-                  </li>
-                  <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                    <div className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 shrink-0"></div>
-                    Prioritizes unlearned vocabulary
-                  </li>
-                </ul>
-                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg h-9 text-xs shadow-sm">
-                  Apply Smart Select
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* MIDDLE PANEL */}
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-w-[500px]">
-          {/* Top Search bar */}
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="font-bold text-[15px] text-slate-800">Question Bank</h2>
-              <p className="text-xs text-slate-500 mt-0.5">420 results found for your filters</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input placeholder="Search keywords..." className="h-10 w-64 pl-9 rounded-lg border-slate-200 bg-slate-50 text-sm font-medium focus-visible:ring-indigo-500" />
-              </div>
-              <Button variant="outline" className="h-10 rounded-lg border-slate-200 text-slate-700 font-semibold gap-2">
-                Sort by: Part order <ChevronDown className="h-4 w-4 text-slate-400" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            
-            {/* Listening Section */}
-            <div>
-              <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm mb-4 bg-indigo-50/50 py-2 px-3 rounded-lg border border-indigo-100/50">
-                <span className="text-lg">🎧</span> LISTENING (PART 1 - 4)
-              </div>
-              
-              <div className="space-y-3">
-                {/* Question Item Unchecked */}
-                <div className="border border-slate-200 rounded-xl p-4 flex items-start gap-4 hover:border-slate-300 transition-colors cursor-pointer group bg-white shadow-sm">
-                  <div className="w-5 h-5 rounded border-2 border-slate-200 mt-1 shrink-0 group-hover:border-indigo-400"></div>
-                  <div className="flex-1">
-                    <p className="text-[14px] font-semibold text-slate-800 mb-2">Look at the picture marked number 1 in your test book...</p>
-                    <div className="flex gap-2 items-center">
-                      <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-bold text-[10px] rounded-md px-2">PART 1</Badge>
-                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-md px-2">EASY</Badge>
-                      <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">⏱ 15s</span>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 shrink-0">
-                    <Eye className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Question Item Checked */}
-                <div className="border-2 border-indigo-600 rounded-xl p-4 flex items-start gap-4 bg-indigo-50/30 cursor-pointer shadow-sm relative overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600"></div>
-                  <div className="w-5 h-5 rounded bg-indigo-600 text-white flex items-center justify-center mt-1 shrink-0">
-                    <Check className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[14px] font-bold text-slate-900 mb-2">Which of the following is most likely occurring in the photo?</p>
-                    <div className="flex gap-2 items-center">
-                      <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-bold text-[10px] rounded-md px-2">PART 1</Badge>
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 font-bold text-[10px] rounded-md px-2">MEDIUM</Badge>
-                    </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                    <Eye className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {/* Question Group */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                  <div className="p-4 flex items-start gap-4 border-b border-slate-100">
-                    <div className="w-5 h-5 rounded border-2 border-slate-200 mt-1 shrink-0"></div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="font-bold text-[14px] text-slate-800">Conversation: Office Renovation Discussion</span>
-                        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-bold text-[10px] rounded-md px-2">PART 3</Badge>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-amber-600 text-xs font-bold">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        Complete group selection recommended
-                      </div>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-slate-400 mt-1" />
-                  </div>
-                  <div className="bg-slate-50/50 p-3 space-y-1">
-                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 cursor-pointer">
-                      <span className="text-[13px] font-semibold text-slate-700">32. Where most likely are the speakers?</span>
-                      <Eye className="w-4 h-4 text-slate-400" />
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 cursor-pointer">
-                      <span className="text-[13px] font-semibold text-slate-700">33. What problem does the woman mention?</span>
-                      <Eye className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Reading Section */}
-            <div className="pt-4">
-              <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm mb-4 bg-indigo-50/50 py-2 px-3 rounded-lg border border-indigo-100/50">
-                <span className="text-lg">📖</span> READING (PART 5 - 7)
-              </div>
-              <div className="h-32 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 font-semibold text-sm bg-slate-50/50">
-                Scroll to load more reading questions
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="w-[300px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h2 className="font-bold text-[15px] text-slate-800 flex items-center gap-2">
-              Selected
-              <span className="bg-indigo-600 text-white text-[11px] px-2 py-0.5 rounded-full">45</span>
-            </h2>
-            <button className="text-[12px] font-bold text-rose-500 hover:text-rose-600">Clear all</button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            <h3 className="text-xs font-bold text-slate-500 mb-3 tracking-wider">LISTENING (22)</h3>
-            <div className="space-y-2">
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 group">
-                <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-bold text-[10px] shrink-0">P1</Badge>
-                <p className="text-[12px] font-semibold text-slate-700 leading-snug flex-1 line-clamp-2">
-                  Look at the picture marked number 1 in your test book...
-                </p>
-                <X className="w-4 h-4 text-slate-400 cursor-pointer hover:text-rose-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 group">
-                <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-bold text-[10px] shrink-0">P3</Badge>
-                <p className="text-[12px] font-semibold text-slate-700 leading-snug flex-1 line-clamp-2">
-                  Conference schedule changes conversation...
-                </p>
-                <X className="w-4 h-4 text-slate-400 cursor-pointer hover:text-rose-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </main>
-
-      {/* FOOTER */}
-      <footer className="h-[60px] bg-white border-t border-slate-200 z-20 flex items-center justify-between px-6 shrink-0 shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-800 text-[15px]">Total: 45/200</span>
-            <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
-              <div className="w-[11%] bg-[#4f46e5] h-full"></div>
-              <div className="w-[11.5%] bg-[#10b981] h-full"></div>
-            </div>
-          </div>
-          <div className="text-xs font-bold text-slate-500 flex items-center gap-3">
-            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#4f46e5]"></div> L: 22</span>
-            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div> R: 23</span>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
-            <AlertTriangle className="w-3.5 h-3.5" /> P2, P3, P4, P7 still incomplete
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setStep(1)} variant="outline" className="font-bold rounded-xl h-10 px-6 border-slate-200 text-slate-700">
-            Back
-          </Button>
-          <Button onClick={() => setStep(3)} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-8">
-            Next
-          </Button>
-        </div>
-      </footer>
-
-    </div>
+        </Card>
+      </div>
+    </DashboardLayout>
   );
 }
-

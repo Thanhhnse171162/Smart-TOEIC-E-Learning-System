@@ -256,95 +256,20 @@ export default function TeacherQuestionsPage() {
       userName="Tran Thi B"
     >
       <div className="max-w-[1400px] mx-auto pb-10">
-        {/* Top Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Questions</p>
-            <p className="text-2xl font-black text-slate-800">1,250</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Listening (Parts 1-4)</p>
-            <p className="text-2xl font-black text-[#4f46e5]">600</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Reading (Parts 5-7)</p>
-            <p className="text-2xl font-black text-emerald-600">650</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Used Questions</p>
-            <p className="text-2xl font-black text-teal-600">850</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unused Questions</p>
-            <p className="text-2xl font-black text-amber-500">400</p>
-          </div>
-        </div>
-
-        {/* Part Selection Row */}
-        <div className="flex items-center gap-6 mb-6 overflow-x-auto pb-2 custom-scrollbar px-2">
-          <button 
-            onClick={() => { setFilterPart('all'); setCurrentPage(1); }}
-            className={`shrink-0 font-bold text-[15px] transition-colors ${filterPart === 'all' ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            All Parts
-          </button>
-          
-          <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
-            <div className="flex items-center gap-1.5 text-[#4f46e5] bg-indigo-50/80 px-2.5 py-1 rounded-md">
-              <Mic className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-black uppercase tracking-wider">Listening</span>
+        {/* Header & Filters */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <BookOpen className="w-5 h-5 stroke-[2.5]" />
             </div>
-            {[
-              { part: 1, qs: 150 },
-              { part: 2, qs: 150 },
-              { part: 3, qs: 150 },
-              { part: 4, qs: 150 },
-            ].map((p) => {
-              const isActive = filterPart === p.part.toString();
-              return (
-                <button 
-                  key={p.part} 
-                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
-                  className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-[#4f46e5]' : 'text-slate-600 hover:text-[#4f46e5]'}`}
-                >
-                  Part {p.part}
-                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-[#4f46e5] text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {p.qs}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
-            <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50/80 px-2.5 py-1 rounded-md">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-black uppercase tracking-wider">Reading</span>
+            <div>
+              <h1 className="text-[17px] font-extrabold text-slate-900">1,250 Questions</h1>
+              <p className="text-xs font-bold text-slate-500">Manage your TOEIC Question Bank</p>
             </div>
-            {[
-              { part: 5, qs: 200 },
-              { part: 6, qs: 200 },
-              { part: 7, qs: 250 },
-            ].map((p) => {
-              const isActive = filterPart === p.part.toString();
-              return (
-                <button 
-                  key={p.part} 
-                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
-                  className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-emerald-700' : 'text-slate-600 hover:text-emerald-600'}`}
-                >
-                  Part {p.part}
-                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {p.qs}
-                  </span>
-                </button>
-              );
-            })}
           </div>
-
-          <div className="flex items-center gap-3 ml-auto pl-4 shrink-0">
-            <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
-            <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => handleActionClick('Export')} className="font-bold rounded-xl h-10 px-6 border-slate-200 shadow-sm text-slate-700">Export</Button>
+            <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm"><Plus className="w-4 h-4 mr-2 stroke-[3]"/> Add Question</Button>
           </div>
         </div>
 
