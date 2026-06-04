@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Clock, Flag, Pause, Play, BarChart3 } from "lucide-react";
+import { Clock, Flag, Pause, Play, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { studentSidebarItems } from "@/lib/navigation";
 
 // Mock Data for Overview
-const mockTestsList = [
+const allMockTestsList = [
   { id: 5, title: "TOEIC Full Test #5", status: "new", time: "120m", questions: 200, difficulty: "Hard" },
   { id: 4, title: "TOEIC Full Test #4", status: "completed", time: "120m", questions: 200, difficulty: "Medium", score: 720 },
   { id: 3, title: "TOEIC Full Test #3", status: "completed", time: "120m", questions: 200, difficulty: "Medium", score: 690 },
@@ -35,6 +35,10 @@ const vibrantBlue = "#0b5ce5";
 
 export default function MockTestPage() {
   const [activeTest, setActiveTest] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+  const totalPages = Math.ceil(allMockTestsList.length / itemsPerPage);
+  const mockTestsList = allMockTestsList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [timeLeft, setTimeLeft] = useState(7200);
@@ -111,6 +115,46 @@ export default function MockTestPage() {
               </Card>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm font-semibold text-slate-500">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allMockTestsList.length)} of {allMockTestsList.length} entries
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-9 w-9 p-0 rounded-lg"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-9 w-9 p-0 rounded-lg font-bold ${currentPage === page ? 'bg-[#0b5ce5] hover:bg-[#0b5ce5]/90 text-white shadow-sm' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-9 w-9 p-0 rounded-lg"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DashboardLayout>
     );

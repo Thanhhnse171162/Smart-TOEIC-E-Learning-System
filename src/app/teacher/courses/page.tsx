@@ -1,17 +1,20 @@
 "use client";
 
-import { Plus, Users, Star, BarChart3, Clock, BookOpen, MoreVertical, Edit, Copy, Trash2, LayoutGrid } from "lucide-react";
+import { useState } from "react";
+import { Plus, Users, Star, BarChart3, Clock, BookOpen, MoreVertical, Edit, Copy, Trash2, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
-const courses = [
+const allCourses = [
   { id: "c1", title: "TOEIC Listening Mastery (Part 1-4)", students: 1250, rating: 4.8, status: "Published", lessons: 24, hours: 12, level: "B1", gradient: "linear-gradient(135deg, #22c55e 0%, #059669 50%, #047857 100%)", progress: 100 },
   { id: "c2", title: "Advanced Reading Strategies (Part 7)", students: 840, rating: 4.9, status: "Published", lessons: 18, hours: 8, level: null, gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 50%, #0891b2 100%)", progress: 100 },
   { id: "c3", title: "TOEIC Vocabulary Crash Course", students: 0, rating: 0, status: "Draft", lessons: 12, hours: 5, level: null, gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)", progress: 65 },
   { id: "c4", title: "Full Mock Test Walkthrough", students: 320, rating: 4.6, status: "Published", lessons: 10, hours: 20, level: null, gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)", progress: 100 },
+  { id: "c5", title: "Grammar Foundation for TOEIC", students: 500, rating: 4.5, status: "Published", lessons: 15, hours: 10, level: "A2", gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)", progress: 100 },
+  { id: "c6", title: "Speaking & Writing Basics", students: 120, rating: 4.2, status: "Draft", lessons: 8, hours: 4, level: "B2", gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)", progress: 40 },
 ];
 
 function StarRating({ rating }: { rating: number }) {
@@ -36,6 +39,11 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function TeacherCoursesPage() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+  const totalPages = Math.ceil(allCourses.length / itemsPerPage);
+  const courses = allCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <DashboardLayout 
       sidebarItems={teacherSidebarItems} 
@@ -210,6 +218,46 @@ export default function TeacherCoursesPage() {
             </div>
           ))}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4">
+            <span className="text-sm font-semibold text-slate-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allCourses.length)} of {allCourses.length} entries
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-9 w-9 p-0 rounded-lg"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-9 w-9 p-0 rounded-lg font-bold ${currentPage === page ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-sm' : 'border-slate-200 text-slate-600'}`}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-9 w-9 p-0 rounded-lg"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

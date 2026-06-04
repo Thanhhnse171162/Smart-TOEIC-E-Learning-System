@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ApiDataBadge } from "@/components/api-data-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +13,13 @@ import { useUsers } from "@/hooks/use-users";
 import { getStoredUser } from "@/lib/auth/session";
 
 export default function TeacherStudentsPage() {
-  const { users, loading, fromApi } = useUsers("Student");
+  const { users: allUsers, loading, fromApi } = useUsers("Student");
   const me = getStoredUser();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(allUsers.length / itemsPerPage);
+  const users = allUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <DashboardLayout
@@ -27,7 +33,7 @@ export default function TeacherStudentsPage() {
       </div>
       <Card className="rounded-xl">
         <CardHeader>
-          <CardTitle>Student List ({users.length})</CardTitle>
+          <CardTitle>Student List ({allUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -66,6 +72,46 @@ export default function TeacherStudentsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-between pt-6 border-t mt-4">
+              <span className="text-sm font-semibold text-slate-500">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allUsers.length)} of {allUsers.length} entries
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-9 w-9 p-0 rounded-lg"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-9 w-9 p-0 rounded-lg font-bold ${currentPage === page ? 'bg-primary text-primary-foreground shadow-sm' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-9 w-9 p-0 rounded-lg"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

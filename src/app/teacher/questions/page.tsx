@@ -254,13 +254,6 @@ export default function TeacherQuestionsPage() {
       title="Question Bank" 
       subtitle="1,250 questions • Parts 1-7" 
       userName="Tran Thi B"
-      headerContent={
-        <div className="flex gap-3 ml-auto">
-          <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Export</Button>
-          <Button variant="outline" onClick={() => handleActionClick('Import CSV')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-10 px-5 shadow-sm hover:bg-slate-50 transition-colors">Import CSV</Button>
-          <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-10 px-5 shadow-sm transition-colors"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
-        </div>
-      }
     >
       <div className="max-w-[1400px] mx-auto pb-10">
         {/* Top Stats */}
@@ -347,6 +340,11 @@ export default function TeacherQuestionsPage() {
                 </button>
               );
             })}
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto pl-4 shrink-0">
+            <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
+            <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
           </div>
         </div>
 

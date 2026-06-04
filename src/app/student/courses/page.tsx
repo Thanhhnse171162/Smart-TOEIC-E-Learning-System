@@ -1,6 +1,7 @@
 "use client";
 
-import { BookOpen, Loader2, Users, PlayCircle, Trophy, Target, Search, Award } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Loader2, Users, PlayCircle, Trophy, Target, Search, Award, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ApiDataBadge } from "@/components/api-data-badge";
@@ -14,8 +15,13 @@ import { useCourses } from "@/hooks/use-courses";
 import { getStoredUser } from "@/lib/auth/session";
 
 export default function CoursesPage() {
-  const { courses, loading, fromApi } = useCourses();
+  const { courses: allCourses, loading, fromApi } = useCourses();
   const user = getStoredUser();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+  const totalPages = Math.ceil(allCourses.length / itemsPerPage);
+  const courses = allCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <DashboardLayout
@@ -66,6 +72,46 @@ export default function CoursesPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-8">
+          <span className="text-sm font-semibold text-slate-500">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allCourses.length)} of {allCourses.length} entries
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-9 w-9 p-0 rounded-lg"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+                className={`h-9 w-9 p-0 rounded-lg font-bold ${currentPage === page ? 'bg-primary text-primary-foreground shadow-sm' : 'border-slate-200 text-slate-600'}`}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-9 w-9 p-0 rounded-lg"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </DashboardLayout>
