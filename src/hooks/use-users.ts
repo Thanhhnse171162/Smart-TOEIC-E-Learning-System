@@ -1,52 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { USE_API } from "@/lib/api/config";
-import { apiGetUsers, apiGetUsersByRole } from "@/layers/data/api/resources.api";
+import { apiGetUsers, apiGetUsersByRole, apiUpdateUserStatus } from "@/layers/data/api/resources.api";
 import { mapApiUser } from "@/layers/data/api/mappers";
 import type { User } from "@/layers/domain/types";
 import { mockUsers } from "@/layers/data/mock/data";
 
-export function useUsers(role?: "Student" | "Teacher" | "Admin") {
+interface UseUsersOptions {
+  role?: "Student" | "Teacher" | "Admin";
+  excludeAdmin?: boolean;
+}
+
+export function useUsers(options?: UseUsersOptions) {
+  const { role, excludeAdmin = false } = options ?? {};
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromApi, setFromApi] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (USE_API) {
-        try {
-          const data = role
-            ? await apiGetUsersByRole(role)
-            : await apiGetUsers();
-          if (!cancelled) {
-            setUsers(data.map(mapApiUser));
-            setFromApi(true);
-            return;
-          }
-        } catch {
-          /* fallback */
-        }
-      }
-      if (!cancelled) {
-        const filtered = role
-          ? mockUsers.filter((u) => u.role === role.toLowerCase())
-          : mockUsers;
-        setUsers(filtered);
-        setFromApi(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    if (USE_API) {
+      try {
+        const data = role ? await apiGetUsersByRole(role) : await apiGetUsers();
+        let mapped = data.map(mapApiUser);
+        if (excludeAdmin) mapped = mapped.filter((u) => u.role !== "admin");
+        setUsers(mapped);
+        setFromApi(true);
+        return;
+      } catch {
+        /* fallback */
       }
     }
+    let filtered = role
+      ? mockUsers.filter((u) => u.role === role.toLowerCase())
+      : [...mockUsers];
+    if (excludeAdmin) filtered = filtered.filter((u) => u.role !== "admin");
+    setUsers(filtered.map((u) => ({ ...u, isActive: u.isActive ?? true })));
+    setFromApi(false);
+  }, [role, excludeAdmin]);
 
-    load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [role]);
+  const updateStatus = async (userId: string, isActive: boolean) => {
+    if (USE_API) {
+      await apiUpdateUserStatus(Number(userId), isActive);
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isActive } : u))
+    );
+  };
 
-  return { users, loading, fromApi };
+  return { users, loading, fromApi, updateStatus, refetch: load };
 }
