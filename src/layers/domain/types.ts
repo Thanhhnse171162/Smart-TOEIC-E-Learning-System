@@ -11,6 +11,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   toeicScore?: number;
+  isActive?: boolean;
   createdAt: string;
 }
 

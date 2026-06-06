@@ -14,6 +14,7 @@ export function mapApiUser(u: ApiUser): User {
     email: u.email,
     role: mapRole(u.role),
     avatar: u.avatar ?? undefined,
+    isActive: u.isActive,
     createdAt: u.createdDate,
   };
 }

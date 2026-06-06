@@ -20,8 +20,8 @@ export const teacherSidebarItems = [
 
 export const adminSidebarItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { href: "/admin/approvals", label: "Approvals", icon: "CheckCircle" },
   { href: "/admin/users", label: "User Management", icon: "User" },
+  { href: "/admin/approvals", label: "Approvals", icon: "CheckCircle" },
   { href: "/admin/courses", label: "Course Management", icon: "BookOpen" },
   { href: "/admin/tests", label: "Test Management", icon: "ClipboardList" },
   { href: "/admin/revenue", label: "Revenue", icon: "BarChart3" },

@@ -13,6 +13,17 @@ export async function apiGetCourses() {
   return apiRequest<ApiCourse[]>("/api/courses");
 }
 
+export async function apiUpdateCourse(
+  id: number,
+  data: { title?: string; description?: string; level?: string; price?: number }
+) {
+  return apiRequest<{ message: string }>(`/api/courses/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
 export async function apiGetVocabularies() {
   return apiRequest<ApiVocabulary[]>("/api/vocabularies");
 }
@@ -29,4 +40,45 @@ export async function apiGetQuestionsByPart(part: number) {
 
 export async function apiGetTOEICTests() {
   return apiRequest<ApiTOEICTest[]>("/api/toeictests");
+}
+
+export async function apiCreateTOEICTest(data: {
+  title: string;
+  description: string;
+  duration: number;
+  totalQuestions: number;
+  testType: string;
+  createdByUserId: number;
+}) {
+  return apiRequest<ApiTOEICTest>("/api/toeictests", {
+    method: "POST",
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function apiUpdateTOEICTest(
+  id: number,
+  data: { title?: string; description?: string; duration?: number; totalQuestions?: number }
+) {
+  return apiRequest<{ message: string }>(`/api/toeictests/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function apiDeleteTOEICTest(id: number) {
+  return apiRequest<{ message: string }>(`/api/toeictests/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export async function apiUpdateUserStatus(userId: number, isActive: boolean) {
+  return apiRequest<{ message: string }>(`/api/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify({ isActive }),
+    auth: true,
+  });
 }

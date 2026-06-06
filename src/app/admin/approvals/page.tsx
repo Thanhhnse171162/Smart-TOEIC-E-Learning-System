@@ -3,74 +3,168 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { adminSidebarItems } from "@/lib/navigation";
-import { CheckCircle, XCircle, Eye, Search, FileText, FileBadge, Download, Check, Clock } from "lucide-react";
+import {
+  Check,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Download,
+  Eye,
+  FileBadge,
+  FileText,
+  Search,
+  X,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-// Mock Data
-const PENDING_APPLICATIONS = [
+interface ApplicationDocument {
+  name: string;
+  url: string;
+  type: "image" | "pdf";
+}
+
+interface Application {
+  id: string;
+  applicantName: string;
+  email: string;
+  phone: string;
+  roleRequested: string;
+  toeicScore: number | string;
+  submissionDate: string;
+  status: string;
+  bio: string;
+  idFront: ApplicationDocument;
+  idBack: ApplicationDocument;
+  credentials: ApplicationDocument;
+}
+
+const PENDING_APPLICATIONS: Application[] = [
   {
     id: "APP-001",
     applicantName: "Nguyen Van A",
     email: "nguyenvana@gmail.com",
-    toeicScore: "950",
+    phone: "+84 901 234 567",
+    roleRequested: "Teacher",
+    toeicScore: 950,
     submissionDate: "2 hours ago",
     status: "Pending",
-    documents: ["TOEIC_Certificate_IIG.pdf", "ID_Card.jpg"],
-    bio: "I have 5 years of experience teaching TOEIC at ILA and VUS. I want to bring my highly effective curriculum to Smart TOEIC."
+    idFront: { name: "CCCD_Front.jpg", url: "/images/practice/1.png", type: "image" },
+    idBack: { name: "CCCD_Back.jpg", url: "/images/practice/part1-photo.png", type: "image" },
+    credentials: { name: "TOEIC_Certificate_IIG.pdf", url: "#", type: "pdf" },
+    bio: "I have 5 years of experience teaching TOEIC at ILA and VUS. I want to bring my highly effective curriculum to Smart TOEIC.",
   },
   {
     id: "APP-002",
     applicantName: "Le Hoang C",
     email: "hoangc.le@gmail.com",
-    toeicScore: "880",
+    phone: "+84 912 345 678",
+    roleRequested: "Teacher",
+    toeicScore: 880,
     submissionDate: "1 day ago",
     status: "Pending",
-    documents: ["TOEIC_Certificate.pdf"],
-    bio: "English major graduate looking to start online teaching."
+    idFront: { name: "CCCD_Front.jpg", url: "/images/practice/screen.png", type: "image" },
+    idBack: { name: "CCCD_Back.jpg", url: "/images/practice/screen1.png", type: "image" },
+    credentials: { name: "TOEIC_Certificate.pdf", url: "#", type: "pdf" },
+    bio: "English major graduate looking to start online teaching.",
   },
   {
     id: "APP-003",
-    applicantName: "Tran Thi B",
-    email: "tranthib@gmail.com",
-    toeicScore: "920",
+    applicantName: "Language Center EnglishPlus",
+    email: "contact@englishplus.edu",
+    phone: "+84 28 3822 1234",
+    roleRequested: "Partner Center",
+    toeicScore: "N/A",
     submissionDate: "2 days ago",
     status: "Pending",
-    documents: ["TOEIC_Certificate.pdf", "Teaching_Profile.pdf"],
-    bio: "Passionate English teacher with 3 years of experience. I want to help students achieve their TOEIC goals."
-  }
+    idFront: { name: "Business_License_Front.pdf", url: "#", type: "pdf" },
+    idBack: { name: "Business_License_Back.pdf", url: "#", type: "pdf" },
+    credentials: { name: "Center_Profile.pdf", url: "#", type: "pdf" },
+    bio: "We are an established center with 500+ active students. We want to use Smart TOEIC as our official LMS platform.",
+  },
 ];
+
+function DocumentPreview({
+  label,
+  doc,
+  onView,
+}: {
+  label: string;
+  doc: ApplicationDocument;
+  onView: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border overflow-hidden bg-card">
+      <div className="px-3 py-2 bg-muted border-b border-border flex items-center gap-2">
+        <CreditCard className="w-4 h-4 text-primary" />
+        <span className="text-xs font-bold text-muted-foreground">{label}</span>
+      </div>
+      <div className="p-3">
+        {doc.type === "image" ? (
+          <div
+            className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted cursor-pointer group"
+            onClick={onView}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={doc.url}
+              alt={doc.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+        ) : (
+          <div
+            className="aspect-[4/3] rounded-xl bg-muted border border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+            onClick={onView}
+          >
+            <FileText className="w-10 h-10 text-muted-foreground" />
+            <span className="text-xs font-bold text-muted-foreground px-2 text-center truncate max-w-full">{doc.name}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[11px] font-semibold text-muted-foreground truncate">{doc.name}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onView}>
+            <Download className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminApprovalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedApp, setSelectedApp] = useState<typeof PENDING_APPLICATIONS[0] | null>(null);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<ApplicationDocument | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const filteredApps = PENDING_APPLICATIONS.filter(app => 
-    app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    app.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredApps = PENDING_APPLICATIONS.filter(
+    (app) =>
+      app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
-  const totalPages = Math.ceil(filteredApps.length / itemsPerPage);
+
+  const totalPages = Math.max(1, Math.ceil(filteredApps.length / itemsPerPage));
   const paginatedApps = filteredApps.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleApprove = () => {
-    alert(`Successfully approved ${selectedApp?.applicantName} to be a Teacher! An email has been sent.`);
-    setSelectedApp(null);
-    setIsRejecting(false);
-  };
-
-  const handleReject = () => {
-    if (!rejectReason) {
-      alert("Please select a reason for rejection.");
-      return;
-    }
-    alert(`Application for ${selectedApp?.applicantName} has been rejected. Reason: ${rejectReason}`);
-    setSelectedApp(null);
+  const openReview = (app: Application) => {
+    setSelectedApp(app);
     setIsRejecting(false);
     setRejectReason("");
   };
@@ -81,8 +175,28 @@ export default function AdminApprovalsPage() {
     setRejectReason("");
   };
 
+  const handleApprove = () => {
+    alert(`Successfully approved ${selectedApp?.applicantName} to be a ${selectedApp?.roleRequested}!`);
+    handleCloseModal();
+  };
+
+  const handleReject = () => {
+    if (!rejectReason) {
+      alert("Please select a reason for rejection.");
+      return;
+    }
+    alert(`Application for ${selectedApp?.applicantName} rejected. Reason: ${rejectReason}`);
+    handleCloseModal();
+  };
+
   return (
-    <DashboardLayout sidebarItems={adminSidebarItems} title="Approvals & Verifications" subtitle="Review requests from students to become Teachers" sidebarTitle="Admin Center" userName="Super Admin">
+    <DashboardLayout
+      sidebarItems={adminSidebarItems}
+      title="Approvals & Verifications"
+      subtitle="Review requests from students to become Teachers or Partners"
+      sidebarTitle="Admin Center"
+      userName="Super Admin"
+    >
       <div className="max-w-[1400px] mx-auto pb-10 space-y-6">
         
         {/* Toolbar */}
@@ -110,11 +224,11 @@ export default function AdminApprovalsPage() {
               <thead>
                 <tr className="border-b border-slate-50 bg-slate-50/50 text-[11px] font-black text-slate-500 uppercase tracking-wider">
                   <th className="p-5 pl-6 w-[10%]">ID</th>
-                  <th className="p-5 w-[35%]">Applicant Info</th>
+                  <th className="p-5 w-[25%]">Applicant Info</th>
+                  <th className="p-5 w-[15%]">Role Requested</th>
                   <th className="p-5 w-[15%]">TOEIC Score</th>
-                  <th className="p-5 w-[15%]">Documents</th>
                   <th className="p-5 w-[15%]">Submitted</th>
-                  <th className="p-5 pr-6 w-[10%] text-right">Actions</th>
+                  <th className="p-5 pr-6 w-[20%] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -141,15 +255,14 @@ export default function AdminApprovalsPage() {
                       </div>
                     </td>
                     <td className="p-5">
-                      <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 px-2.5 py-0.5 text-xs font-black shadow-sm">
-                        {app.toeicScore}
+                      <Badge className={`px-2.5 py-0.5 text-xs font-black shadow-sm ${app.roleRequested === "Teacher" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                        {app.roleRequested}
                       </Badge>
                     </td>
                     <td className="p-5">
-                      <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-600">
-                        <FileText className="w-4 h-4 text-indigo-400" />
-                        <span>{app.documents.length} files</span>
-                      </div>
+                      <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 px-2.5 py-0.5 text-xs font-black shadow-sm">
+                        {app.toeicScore}
+                      </Badge>
                     </td>
                     <td className="p-5">
                       <div className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
@@ -158,166 +271,145 @@ export default function AdminApprovalsPage() {
                       </div>
                     </td>
                     <td className="p-5 pr-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button onClick={() => { setSelectedApp(app); setIsRejecting(true); }} variant="outline" size="icon" className="h-9 w-9 rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700" title="Reject">
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                        <Button onClick={() => alert(`Successfully approved ${app.applicantName}!`)} variant="outline" size="icon" className="h-9 w-9 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700" title="Approve">
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button onClick={() => setSelectedApp(app)} variant="outline" className="h-9 px-3 rounded-xl font-bold border-slate-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 gap-2">
-                          <Eye className="w-4 h-4" /> Review
-                        </Button>
-                      </div>
+                      <Button onClick={() => openReview(app)} variant="outline" className="h-9 px-3 rounded-xl font-bold border-slate-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 gap-2">
+                        <Eye className="w-4 h-4" /> Review
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          <div className="p-4 border-t border-slate-100 flex items-center justify-between text-[13px] font-bold text-slate-500 bg-slate-50/50">
-            <span>Showing {filteredApps.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredApps.length)} of {filteredApps.length}</span>
-            <div className="flex gap-1.5">
-              <Button 
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} 
-                disabled={currentPage === 1}
-                variant="outline" size="sm" className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-100"
-              >
-                Previous
-              </Button>
-              {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
-                <Button 
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  variant={currentPage === page ? "default" : "outline"} 
-                  size="sm" 
-                  className={`h-8 w-8 rounded-lg font-bold ${currentPage === page ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' : 'border-slate-200 hover:bg-slate-100 text-slate-600'}`}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button 
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} 
-                disabled={currentPage === totalPages || totalPages === 0}
-                variant="outline" size="sm" className="h-8 px-3 rounded-lg border-slate-200 font-bold hover:bg-slate-100"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Review Modal */}
-      {selectedApp && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center backdrop-blur-sm px-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                  <FileBadge className="w-5 h-5" />
+      <Dialog open={!!selectedApp} onOpenChange={(open) => !open && handleCloseModal()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden rounded-3xl p-0 flex flex-col">
+          {selectedApp && (
+            <>
+              <DialogHeader className="shrink-0 sticky top-0 z-10 p-6 pr-14 border-b bg-background">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <FileBadge className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-extrabold">Application Review</DialogTitle>
+                    <p className="text-xs font-bold text-muted-foreground mt-0.5">ID: {selectedApp.id}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-lg text-slate-800">Application Review</h3>
-                  <p className="text-xs font-bold text-slate-500 mt-0.5">ID: {selectedApp.id}</p>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase mb-1">Applicant</p>
+                    <p className="font-bold">{selectedApp.applicantName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedApp.email}</p>
+                    <p className="text-sm text-muted-foreground">{selectedApp.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase mb-1">Status</p>
+                    <span className="text-sm font-bold text-amber-500 dark:text-amber-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> Pending Review
+                    </span>
+                    <p className="text-sm font-bold mt-2">TOEIC: {selectedApp.toeicScore}</p>
+                  </div>
                 </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={handleCloseModal} className="rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200">
-                <XCircle className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            {/* Content (Scrollable) */}
-            <div className="p-6 space-y-6 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-6">
+
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Applicant Name</p>
-                  <p className="text-[15px] font-black text-slate-800">{selectedApp.applicantName}</p>
-                  <p className="text-[13px] font-semibold text-slate-500 mt-0.5">{selectedApp.email}</p>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase mb-2">Bio</p>
+                  <p className="p-4 bg-muted rounded-2xl text-sm">{selectedApp.bio}</p>
                 </div>
+
+                {/* 2 CCCD documents + credentials */}
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Submitted</p>
-                  <p className="text-[15px] font-black text-slate-800">{selectedApp.submissionDate}</p>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase mb-3">
+                    Identity Verification (CCCD) — 2 files submitted
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <DocumentPreview
+                      label="Front Side"
+                      doc={selectedApp.idFront}
+                      onView={() => setPreviewDoc(selectedApp.idFront)}
+                    />
+                    <DocumentPreview
+                      label="Back Side"
+                      doc={selectedApp.idBack}
+                      onView={() => setPreviewDoc(selectedApp.idBack)}
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Claimed TOEIC Score</p>
-                  <p className="text-[18px] font-black text-slate-800">{selectedApp.toeicScore}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
-                  <span className="text-[13px] font-bold text-amber-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Pending Review</span>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase mb-3">
+                    Expert Credentials
+                  </p>
+                  <DocumentPreview
+                    label="Certificate / Degree"
+                    doc={selectedApp.credentials}
+                    onView={() => setPreviewDoc(selectedApp.credentials)}
+                  />
                 </div>
               </div>
 
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Self Introduction & Bio</p>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-medium text-slate-700 leading-relaxed">
-                  {selectedApp.bio}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Attached Credentials (Proofs)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedApp.documents.map((doc, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors cursor-pointer group">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
-                        <span className="text-sm font-bold text-slate-600 group-hover:text-indigo-700 truncate max-w-[150px]">{doc}</span>
-                      </div>
-                      <Download className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Actions Footer */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-4 shrink-0">
-              {isRejecting ? (
-                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2">
-                  <p className="text-sm font-bold text-slate-700">Select reason for rejection:</p>
-                  <div className="flex gap-3">
-                    <select 
+              <DialogFooter className="shrink-0 sticky bottom-0 z-10 p-6 border-t bg-background flex-col sm:flex-row gap-3">
+                {isRejecting ? (
+                  <div className="w-full flex flex-col gap-3">
+                    <select
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
-                      className="flex-1 h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-rose-500"
+                      className="h-11 px-4 rounded-xl border border-input bg-background text-sm font-semibold text-foreground"
                     >
-                      <option value="" disabled>-- Choose a reason --</option>
+                      <option value="">-- Choose rejection reason --</option>
                       <option value="Invalid TOEIC Certificate">Invalid TOEIC Certificate</option>
-                      <option value="Score does not meet minimum requirement">Score does not meet minimum requirement</option>
                       <option value="Missing ID verification documents">Missing ID verification documents</option>
-                      <option value="Suspicious or fake credentials">Suspicious or fake credentials</option>
-                      <option value="Other">Other</option>
+                      <option value="Suspicious credentials">Suspicious credentials</option>
                     </select>
-                    <Button onClick={() => setIsRejecting(false)} variant="outline" className="font-bold rounded-xl h-11 px-6 border-slate-200 text-slate-600 hover:bg-slate-100">
-                      Cancel
-                    </Button>
-                    <Button onClick={handleReject} className="font-bold rounded-xl h-11 px-6 bg-rose-600 hover:bg-rose-700 text-white shadow-sm gap-2">
-                      <XCircle className="w-4 h-4" /> Confirm Rejection
-                    </Button>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" className="rounded-xl" onClick={() => setIsRejecting(false)}>
+                        Cancel
+                      </Button>
+                      <Button className="rounded-xl bg-rose-600 hover:bg-rose-700" onClick={handleReject}>
+                        Confirm Rejection
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-xs font-semibold text-slate-500">Please review documents carefully before approving.</p>
-                  <div className="flex w-full sm:w-auto items-center gap-3">
-                    <Button onClick={() => setIsRejecting(true)} variant="outline" className="flex-1 sm:flex-none font-bold rounded-xl h-11 px-6 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 gap-2">
-                      <XCircle className="w-4 h-4" /> Reject
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground mr-auto">Review CCCD front & back before approving.</p>
+                    <Button variant="outline" className="rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setIsRejecting(true)}>
+                      Reject
                     </Button>
-                    <Button onClick={handleApprove} className="flex-1 sm:flex-none font-bold rounded-xl h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-2">
-                      <Check className="w-4 h-4" /> Approve & Upgrade
+                    <Button className="rounded-xl bg-emerald-600 hover:bg-emerald-700" onClick={handleApprove}>
+                      <CheckCircle className="w-4 h-4 mr-1" /> Approve
                     </Button>
-                  </div>
-                </div>
-              )}
+                  </>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-size document preview */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{previewDoc?.name}</DialogTitle>
+          </DialogHeader>
+          {previewDoc?.type === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewDoc.url} alt={previewDoc.name} className="w-full rounded-xl border" />
+          ) : (
+            <div className="flex flex-col items-center py-12 gap-4">
+              <FileText className="w-16 h-16 text-muted-foreground" />
+              <p className="font-bold">{previewDoc?.name}</p>
+              <p className="text-sm text-muted-foreground">PDF preview — download to view full file</p>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

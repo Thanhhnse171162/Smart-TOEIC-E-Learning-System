@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  CheckCircle,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
@@ -15,7 +16,6 @@ import {
   User,
   X,
   LogOut,
-  CheckCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";

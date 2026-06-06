@@ -1,26 +1,59 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { adminSidebarItems } from "@/lib/navigation";
+import {
+  REVENUE_BY_PERIOD,
+  REVENUE_PERIOD_LABELS,
+  type RevenuePeriod,
+} from "@/lib/admin-revenue-data";
 
-const revenueData = [
-  { month: "Jan", revenue: 32000, subscriptions: 280 }, { month: "Feb", revenue: 38500, subscriptions: 320 },
-  { month: "Mar", revenue: 42000, subscriptions: 350 }, { month: "Apr", revenue: 48000, subscriptions: 410 },
-  { month: "May", revenue: 55000, subscriptions: 480 }, { month: "Jun", revenue: 69000, subscriptions: 590 },
-];
+type Period = RevenuePeriod;
+
+const SUMMARY_BY_PERIOD: Record<Period, { label: string; value: string }[]> = {
+  day: [
+    { label: "Today's Revenue", value: "$2,340" },
+    { label: "This Week", value: "$17,550" },
+    { label: "Active Subscriptions", value: "590" },
+  ],
+  month: [
+    { label: "Monthly Revenue", value: "$69,000" },
+    { label: "Total Revenue", value: "$284,500" },
+    { label: "Active Subscriptions", value: "590" },
+  ],
+  year: [
+    { label: "Yearly Revenue", value: "$312,000" },
+    { label: "Total Revenue", value: "$1,261,500" },
+    { label: "Active Subscriptions", value: "590" },
+  ],
+};
 
 export default function AdminRevenuePage() {
+  const [period, setPeriod] = useState<Period>("month");
+
+  const chartData = REVENUE_BY_PERIOD[period];
+  const summaryCards = SUMMARY_BY_PERIOD[period];
+
+  const tooltipFormatter = useMemo(
+    () => (value: number) => [`$${value.toLocaleString()}`, "Revenue"],
+    []
+  );
+
   return (
     <DashboardLayout sidebarItems={adminSidebarItems} title="Revenue" sidebarTitle="Admin Panel" userName="Admin">
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        {[
-          { label: "Monthly Revenue", value: "$69,000" },
-          { label: "Total Revenue", value: "$284,500" },
-          { label: "Active Subscriptions", value: "590" },
-        ].map((s) => (
+        {summaryCards.map((s) => (
           <Card key={s.label} className="rounded-xl">
             <CardContent className="pt-6 text-center">
               <p className="text-3xl font-bold text-primary">{s.value}</p>
@@ -30,11 +63,28 @@ export default function AdminRevenuePage() {
         ))}
       </div>
       <Card className="rounded-xl mb-6">
-        <CardHeader><CardTitle>Revenue Overview</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle>Revenue Overview</CardTitle>
+          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SelectTrigger className="w-[110px] h-9 rounded-xl text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(REVENUE_PERIOD_LABELS) as Period[]).map((key) => (
+                <SelectItem key={key} value={key}>
+                  {REVENUE_PERIOD_LABELS[key]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip />
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="label" />
+              <YAxis />
+              <Tooltip formatter={tooltipFormatter} />
               <Bar dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
