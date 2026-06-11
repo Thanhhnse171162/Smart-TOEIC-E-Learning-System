@@ -60,7 +60,6 @@ export default function CreateTestPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   const [difficultyFilter, setDifficultyFilter] = useState("All");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [previewQuestion, setPreviewQuestion] = useState<any>(null);
   
   // Basic Info State
@@ -587,7 +586,6 @@ export default function CreateTestPage() {
                   
                   {previewQuestion.isGroup && previewQuestion.subQuestions ? (
                     <div className="space-y-6 border-l-2 border-indigo-100 pl-4">
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                       {previewQuestion.subQuestions.map((sq: any, i: number) => (
                         <div key={i} className="space-y-3">
                           <p className="font-semibold text-[14px] text-slate-800">{i+1}. {sq.text}</p>

@@ -38,7 +38,7 @@ const EMPTY_FORM = {
 };
 
 export default function AdminTestsPage() {
-  const { tests: allTests, loading, fromApi, updateTest, createTest, deleteTest } = useAdminTests();
+  const { tests: allTests, loading, isFromApi, updateTest, createTest, deleteTest } = useAdminTests();
   const me = getStoredUser();
 
   const [search, setSearch] = useState("");
@@ -224,7 +224,7 @@ export default function AdminTestsPage() {
               setCurrentPage(1);
             }}
           />
-          <ApiDataBadge fromApi={fromApi} />
+          <ApiDataBadge fromApi={isFromApi} />
         </div>
         <Button className="rounded-xl gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Test

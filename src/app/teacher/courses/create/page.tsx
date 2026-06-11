@@ -181,10 +181,10 @@ export default function CreateCoursePage() {
 
             <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 shadow-md text-white">
               <h3 className="font-extrabold text-lg mb-2 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5" /> What's next?
+                <CheckCircle2 className="w-5 h-5" /> What&apos;s next?
               </h3>
               <p className="text-indigo-100 text-[13px] font-medium leading-relaxed mb-4">
-                After creating the base course, you'll be redirected to the Course Dashboard where you can:
+                After creating the base course, you&apos;ll be redirected to the Course Dashboard where you can:
               </p>
               <ul className="space-y-2 text-[13px] font-bold text-white/90">
                 <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-white rounded-full"/> Add Modules & Lessons</li>

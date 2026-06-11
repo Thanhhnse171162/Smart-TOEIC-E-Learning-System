@@ -84,7 +84,7 @@ function fromApi(t: {
 export function useAdminTests() {
   const [tests, setTests] = useState<AdminTest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fromApi, setFromApi] = useState(false);
+  const [isFromApi, setIsFromApi] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,7 +93,7 @@ export function useAdminTests() {
         const data = await apiGetTOEICTests();
         if (data.length > 0) {
           setTests(data.map(fromApi));
-          setFromApi(true);
+          setIsFromApi(true);
           return;
         }
       } catch {
@@ -101,7 +101,7 @@ export function useAdminTests() {
       }
     }
     setTests(MOCK_TESTS);
-    setFromApi(false);
+    setIsFromApi(false);
   }, []);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export function useAdminTests() {
       Pick<AdminTest, "title" | "description" | "duration" | "totalQuestions" | "testType" | "status">
     >
   ) => {
-    if (USE_API && fromApi) {
+    if (USE_API && isFromApi) {
       await apiUpdateTOEICTest(Number(id), {
         title: data.title,
         description: data.description,
@@ -140,7 +140,7 @@ export function useAdminTests() {
       });
       const row = fromApi(created);
       setTests((prev) => [...prev, row]);
-      setFromApi(true);
+      setIsFromApi(true);
       return row;
     }
     const row: AdminTest = {
@@ -155,11 +155,11 @@ export function useAdminTests() {
   };
 
   const deleteTest = async (id: string) => {
-    if (USE_API && fromApi) {
+    if (USE_API && isFromApi) {
       await apiDeleteTOEICTest(Number(id));
     }
     setTests((prev) => prev.filter((t) => t.id !== id));
   };
 
-  return { tests, loading, fromApi, updateTest, createTest, deleteTest, refetch: load };
+  return { tests, loading, isFromApi, updateTest, createTest, deleteTest, refetch: load };
 }
