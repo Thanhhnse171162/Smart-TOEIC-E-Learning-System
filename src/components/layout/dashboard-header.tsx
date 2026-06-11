@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface DashboardHeaderProps {
   title: string;
@@ -15,6 +17,9 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, subtitle, userName = "Student", userAvatar, children }: DashboardHeaderProps) {
+  const pathname = usePathname() || "";
+  const role = pathname.split("/")[1] || "student";
+  
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 lg:px-6 backdrop-blur">
       <div className="flex items-center gap-6">
@@ -35,13 +40,13 @@ export function DashboardHeader({ title, subtitle, userName = "Student", userAva
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
+        <Link href={`/${role}/settings`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Avatar className="h-8 w-8 cursor-pointer">
             <AvatarImage src={userAvatar ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=student"} />
             <AvatarFallback>{userName[0]}</AvatarFallback>
           </Avatar>
           <span className="hidden text-sm font-medium sm:block">{userName}</span>
-        </div>
+        </Link>
       </div>
     </header>
   );

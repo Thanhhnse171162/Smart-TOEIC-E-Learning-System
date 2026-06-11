@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { studentSidebarItems } from "@/lib/navigation";
 import {
   User, Mail, Phone, Pencil, BookOpen, Trophy, CheckCircle2,
@@ -154,11 +156,36 @@ function ApplyTeacherModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   );
 }
 
+const MOCK_TRANSACTIONS = [
+  { id: 1, title: "TOEIC Intensive Reading", desc: "Online Course", date: "Oct 12, 2023", amount: "$49.00", status: "Success" },
+  { id: 2, title: "Full Mock Test Package", desc: "10 Exams", date: "Sep 05, 2023", amount: "$29.00", status: "Success" },
+  { id: 3, title: "Business Vocabulary Pack", desc: "E-book & Flashcards", date: "Aug 20, 2023", amount: "$15.00", status: "Success" },
+  { id: 4, title: "TOEIC Listening Master", desc: "Online Course", date: "Jul 15, 2023", amount: "$39.00", status: "Success" },
+  { id: 5, title: "Grammar Crash Course", desc: "Video Series", date: "Jun 02, 2023", amount: "$25.00", status: "Success" },
+  { id: 6, title: "Speaking Practice 1-on-1", desc: "Live Session", date: "May 10, 2023", amount: "$50.00", status: "Success" },
+  { id: 7, title: "Advanced Writing Patterns", desc: "E-book", date: "Apr 22, 2023", amount: "$12.00", status: "Success" },
+];
+
 /* ================================================================
    PROFILE PAGE
    ================================================================ */
 export default function ProfilePage() {
   const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const itemsPerPage = 3;
+  
+  const totalPages = Math.ceil(MOCK_TRANSACTIONS.length / itemsPerPage);
+  const currentTransactions = MOCK_TRANSACTIONS.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleDownloadInvoice = (tx: any) => {
+    setDownloadingId(tx.id);
+    // Simulate API call to generate and download PDF
+    setTimeout(() => {
+      setDownloadingId(null);
+      alert(`Đã tải xuống thành công Biên lai/Hóa đơn cho khóa học: ${tx.title}`);
+    }, 1500);
+  };
 
   return (
     <DashboardLayout sidebarItems={studentSidebarItems} title="Settings" subtitle="Manage your account" userName="Minh">
@@ -209,117 +236,171 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── Two Column Layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        {/* ── Tabs Layout ── */}
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 max-w-[600px] mb-6">
+            <TabsTrigger value="profile" className="rounded-md">Profile Information</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-md">Password & Security</TabsTrigger>
+            <TabsTrigger value="billing" className="rounded-md">Billing History</TabsTrigger>
+          </TabsList>
 
-          {/* LEFT: Basic Information */}
-          <div className="bg-white dark:bg-card border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-            <div className="flex items-center justify-between p-6 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                  <User className="w-4.5 h-4.5 text-slate-600" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Basic Information</h3>
-              </div>
-              <Button variant="link" className="text-[#4b6cb7] font-semibold text-sm p-0 h-auto">Save Changes</Button>
-            </div>
-
-            <div className="border-t border-slate-100 dark:border-slate-800" />
-
-            <div className="p-6 space-y-5">
-              {/* Full Name */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Full Name</label>
-                <div className="relative">
-                  <Input
-                    defaultValue="Minh"
-                    className="rounded-xl h-12 border-slate-200 bg-white dark:bg-slate-800 pr-10 font-medium focus:border-[#4b6cb7] focus:ring-[#4b6cb7]"
-                  />
-                  <Pencil className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+          {/* TAB: PROFILE */}
+          <TabsContent value="profile" className="space-y-6">
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <div className="flex items-center justify-between p-6 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <User className="w-4.5 h-4.5 text-slate-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Basic Information</h3>
                 </div>
               </div>
-
-              {/* Phone Number */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Phone Number</label>
-                <div className="relative">
-                  <Input
-                    defaultValue="+84 901 234 567"
-                    className="rounded-xl h-12 border-slate-200 bg-white dark:bg-slate-800 pr-10 font-medium focus:border-[#4b6cb7] focus:ring-[#4b6cb7]"
-                  />
-                  <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+              <div className="border-t border-slate-100 dark:border-slate-800" />
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Full Name</label>
+                    <div className="relative">
+                      <Input defaultValue="Minh" className="rounded-xl h-12 border-slate-200 pr-10 font-medium focus:border-[#4b6cb7] focus:ring-[#4b6cb7]" />
+                      <Pencil className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Phone Number</label>
+                    <div className="relative">
+                      <Input defaultValue="+84 901 234 567" className="rounded-xl h-12 border-slate-200 pr-10 font-medium focus:border-[#4b6cb7] focus:ring-[#4b6cb7]" />
+                      <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Email Address */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Email Address</label>
-                <Input
-                  defaultValue="minh.studying@example.com"
-                  readOnly
-                  className="rounded-xl h-12 border-slate-200 bg-slate-50 dark:bg-slate-800 font-medium text-slate-500 cursor-not-allowed"
-                />
-                <p className="text-xs text-slate-400">Email changes require identity verification.</p>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Email Address</label>
+                  <Input defaultValue="minh.studying@example.com" readOnly className="rounded-xl h-12 border-slate-200 bg-slate-50 dark:bg-slate-800 font-medium text-slate-500 cursor-not-allowed" />
+                  <p className="text-xs text-slate-400">Email changes require identity verification.</p>
+                </div>
+                <div className="pt-4 flex justify-end">
+                  <Button className="rounded-xl bg-[#4b6cb7] hover:bg-[#3b5b9c] text-white font-bold h-11 px-8 shadow-md">
+                    Save Changes
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          </TabsContent>
 
-          {/* RIGHT: Account Status + Daily Goal */}
-          <div className="space-y-6">
-            {/* Account Status */}
+          {/* TAB: SECURITY */}
+          <TabsContent value="security" className="space-y-6">
             <div className="bg-white dark:bg-card border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
               <div className="flex items-center gap-3 p-6 pb-4">
                 <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                  <Shield className="w-4.5 h-4.5 text-slate-600" />
+                  <Lock className="w-4.5 h-4.5 text-slate-600" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Account Status</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Change Password</h3>
               </div>
-
               <div className="border-t border-slate-100 dark:border-slate-800" />
-
-              <div className="p-6 space-y-1">
-                {/* Active Status */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Active Student</p>
-                    <p className="text-xs text-slate-500">Membership valid until Dec 2024</p>
-                  </div>
+              <div className="p-6 space-y-5">
+                <div className="space-y-2 max-w-md">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Current Password</label>
+                  <Input type="password" placeholder="Enter current password" className="rounded-xl h-12 border-slate-200 focus:border-[#4b6cb7] focus:ring-[#4b6cb7]" />
                 </div>
-
-                {/* Links */}
-                <button className="w-full flex items-center justify-between py-3.5 px-1 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group">
-                  <span className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <CreditCard className="w-4 h-4 text-slate-400" /> Billing History
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                </button>
-                <button className="w-full flex items-center justify-between py-3.5 px-1 border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors group">
-                  <span className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <Lock className="w-4 h-4 text-slate-400" /> Password & Security
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                </button>
-              </div>
-            </div>
-
-            {/* Daily Goal */}
-            <div className="bg-gradient-to-br from-[#4b6cb7] to-[#3b5b9c] rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-              <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
-              <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/5" />
-              <div className="relative z-10">
-                <h4 className="font-bold text-lg mb-1">Daily Goal</h4>
-                <p className="text-white/80 text-sm mb-4">You&apos;re 20 minutes away from hitting your study streak!</p>
-                <div className="h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-white rounded-full w-[70%] transition-all duration-700" />
+                <div className="space-y-2 max-w-md">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">New Password</label>
+                  <Input type="password" placeholder="Enter new password" className="rounded-xl h-12 border-slate-200 focus:border-[#4b6cb7] focus:ring-[#4b6cb7]" />
+                </div>
+                <div className="space-y-2 max-w-md">
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Confirm New Password</label>
+                  <Input type="password" placeholder="Confirm new password" className="rounded-xl h-12 border-slate-200 focus:border-[#4b6cb7] focus:ring-[#4b6cb7]" />
+                </div>
+                <div className="pt-4 flex justify-start">
+                  <Button className="rounded-xl bg-[#4b6cb7] hover:bg-[#3b5b9c] text-white font-bold h-11 px-8 shadow-md">
+                    Update Password
+                  </Button>
                 </div>
               </div>
-              <Flame className="absolute right-5 bottom-5 w-10 h-10 text-white/20" />
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* TAB: BILLING */}
+          <TabsContent value="billing" className="space-y-6">
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 p-6 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <CreditCard className="w-4.5 h-4.5 text-slate-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transaction History</h3>
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-800" />
+              <div className="p-0 overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Course / Item</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Date</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase text-right">Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {currentTransactions.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">{tx.title}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{tx.desc}</p>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm font-medium">{tx.date}</td>
+                        <td className="px-6 py-4 text-slate-900 dark:text-white font-bold text-sm">{tx.amount}</td>
+                        <td className="px-6 py-4">
+                          <Badge className="bg-emerald-100 text-emerald-700 border-none font-semibold">{tx.status}</Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-[#4b6cb7] font-semibold hover:bg-[#4b6cb7]/10"
+                            onClick={() => handleDownloadInvoice(tx)}
+                            disabled={downloadingId === tx.id}
+                          >
+                            {downloadingId === tx.id ? (
+                              <span className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-[#4b6cb7]/30 border-t-[#4b6cb7] rounded-full animate-spin" />
+                                Downloading...
+                              </span>
+                            ) : "Download"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between p-4 px-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg font-semibold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Previous
+                </Button>
+                <div className="text-sm font-medium text-slate-500">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg font-semibold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* ── Become a Teacher CTA ── */}
         <div className="bg-white dark:bg-card border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
