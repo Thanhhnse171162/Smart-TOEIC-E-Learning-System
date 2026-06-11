@@ -26,7 +26,7 @@ export default function TeacherTestsPage() {
   const tests = allTests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <DashboardLayout sidebarItems={teacherSidebarItems} title="Test Management" sidebarTitle="Teacher Portal" userName="Tran Thi B">
+    <DashboardLayout sidebarItems={teacherSidebarItems} title="Test Management" sidebarTitle="Teacher Portal" >
       <div className="flex justify-between items-center mb-6">
         <p className="text-muted-foreground">Create and manage TOEIC tests</p>
         <Link href="/teacher/tests/create">

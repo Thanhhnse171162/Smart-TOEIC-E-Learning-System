@@ -7,6 +7,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getStoredUser, StoredUser } from "@/lib/auth/session";
 
 interface DashboardHeaderProps {
   title: string;
@@ -16,10 +18,19 @@ interface DashboardHeaderProps {
   children?: React.ReactNode;
 }
 
-export function DashboardHeader({ title, subtitle, userName = "Student", userAvatar, children }: DashboardHeaderProps) {
+export function DashboardHeader({ title, subtitle, userName: propUserName, userAvatar: propUserAvatar, children }: DashboardHeaderProps) {
   const pathname = usePathname() || "";
   const role = pathname.split("/")[1] || "student";
   
+  const [user, setUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
+
+  const displayUserName = user?.fullName || propUserName || "Student";
+  const displayUserAvatar = user?.avatar || propUserAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayUserName}`;
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 lg:px-6 backdrop-blur">
       <div className="flex items-center gap-6">
@@ -42,10 +53,10 @@ export function DashboardHeader({ title, subtitle, userName = "Student", userAva
         </Button>
         <Link href={`/${role}/settings`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Avatar className="h-8 w-8 cursor-pointer">
-            <AvatarImage src={userAvatar ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=student"} />
-            <AvatarFallback>{userName[0]}</AvatarFallback>
+            <AvatarImage src={displayUserAvatar} />
+            <AvatarFallback>{displayUserName[0]}</AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm font-medium sm:block">{userName}</span>
+          <span className="hidden text-sm font-medium sm:block">{displayUserName}</span>
         </Link>
       </div>
     </header>

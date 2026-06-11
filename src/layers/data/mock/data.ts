@@ -219,6 +219,34 @@ export const mockVocabulary: VocabularyWord[] = [
     example: "Technology innovation drives business growth.",
     topic: "technology",
   },
+  {
+    id: "v7",
+    word: "prescription",
+    meaning: "a piece of paper written by a doctor that lets you get medicine",
+    example: "The doctor gave me a prescription for my cough.",
+    topic: "health",
+  },
+  {
+    id: "v8",
+    word: "inventory",
+    meaning: "a complete list of items such as property, goods in stock",
+    example: "We are currently taking inventory of our stock.",
+    topic: "retail",
+  },
+  {
+    id: "v9",
+    word: "broadcast",
+    meaning: "transmit by radio or television",
+    example: "The match will be broadcast live tomorrow.",
+    topic: "entertainment",
+  },
+  {
+    id: "v10",
+    word: "assemble",
+    meaning: "gather together in one place for a common purpose",
+    example: "A crowd had assembled outside the gates.",
+    topic: "manufacturing",
+  },
 ];
 
 export const mockChatSessions: ChatSession[] = [
@@ -654,6 +682,10 @@ export const vocabularyTopics = [
   { id: "office", label: "Office", icon: "building" },
   { id: "travel", label: "Travel", icon: "plane" },
   { id: "technology", label: "Technology", icon: "cpu" },
+  { id: "health", label: "Health", icon: "heart-pulse" },
+  { id: "retail", label: "Retail", icon: "shopping-bag" },
+  { id: "entertainment", label: "Entertainment", icon: "film" },
+  { id: "manufacturing", label: "Manufacturing", icon: "factory" },
 ];
 
 export const studyHoursData = [
@@ -684,6 +716,23 @@ practiceQuestionsData.forEach((part) => {
     part.questions.push({
       ...template,
       id: `${template.id}-dup-${i}`,
+    });
+    i++;
+  }
+});
+
+// Dynamically expand vocabulary to 30 words per topic
+vocabularyTopics.forEach((topic) => {
+  const originalWords = mockVocabulary.filter(w => w.topic === topic.id);
+  if (originalWords.length === 0) return;
+  
+  let i = originalWords.length;
+  while (i < 30) {
+    const template = originalWords[i % originalWords.length];
+    mockVocabulary.push({
+      ...template,
+      id: `${template.id}-dup-${i}-${topic.id}`,
+      word: `${template.word} ${i + 1}`, // Add number to make it slightly different
     });
     i++;
   }

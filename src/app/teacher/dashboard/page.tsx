@@ -21,7 +21,7 @@ const scoreData = [
 
 export default function TeacherDashboardPage() {
   return (
-    <DashboardLayout sidebarItems={teacherSidebarItems} title="Teacher Dashboard" subtitle="Overview" sidebarTitle="Teacher Portal" userName="Tran Thi B">
+    <DashboardLayout sidebarItems={teacherSidebarItems} title="Teacher Dashboard" subtitle="Overview" sidebarTitle="Teacher Portal" >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {stats.map((s) => (
           <Card key={s.label} className="rounded-xl">

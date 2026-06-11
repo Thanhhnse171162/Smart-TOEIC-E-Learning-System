@@ -4,6 +4,7 @@ import { useState, use } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
+import { getStoredUser } from "@/lib/auth/session";
 import {
   ArrowLeft, Plus, PlayCircle, FileText, CheckCircle2,
   MoreVertical, Users, Settings, BookOpen, GripVertical, HelpCircle, X, Video, FileCheck2
@@ -45,6 +46,7 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
   const { courseId } = use(params);
   const [activeTab, setActiveTab] = useState("curriculum");
   const [course, setCourse] = useState(MOCK_COURSE);
+  const me = getStoredUser();
 
   // Modals state
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
@@ -106,7 +108,7 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
       sidebarItems={teacherSidebarItems}
       title="Manage Course"
       sidebarTitle="Teacher"
-      userName="Tran Thi B"
+      userName={me?.fullName ?? "Teacher"}
     >
       <div className="w-full max-w-[1200px] mx-auto pb-10 pt-4 px-4">
         {/* Header Section */}

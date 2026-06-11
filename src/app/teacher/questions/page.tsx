@@ -253,7 +253,7 @@ export default function TeacherQuestionsPage() {
       sidebarItems={teacherSidebarItems} 
       title="Question Bank" 
       subtitle="1,250 questions • Parts 1-7" 
-      userName="Tran Thi B"
+      
     >
       <div className="max-w-[1400px] mx-auto pb-10">
         {/* Top Stats */}

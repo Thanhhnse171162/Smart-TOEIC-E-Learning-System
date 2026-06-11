@@ -49,7 +49,7 @@ export default function TeacherCoursesPage() {
       sidebarItems={teacherSidebarItems} 
       title="My Courses" 
       subtitle="Manage your curriculum and track student progress"
-      userName="Tran Thi B"
+      
     >
 
       <div className="max-w-[1400px] mx-auto pb-10 space-y-8">

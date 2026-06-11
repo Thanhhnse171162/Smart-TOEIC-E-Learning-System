@@ -19,7 +19,7 @@ const difficultQuestions = [
 
 export default function TeacherAnalyticsPage() {
   return (
-    <DashboardLayout sidebarItems={teacherSidebarItems} title="Analytics" sidebarTitle="Teacher Portal" userName="Tran Thi B">
+    <DashboardLayout sidebarItems={teacherSidebarItems} title="Analytics" sidebarTitle="Teacher Portal" >
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
         {[
           { label: "Average Score", value: "742" },

@@ -126,7 +126,7 @@ export default function ListeningQuestionForm() {
       sidebarItems={teacherSidebarItems}
       title="Question Bank"
       subtitle="Add Listening Question"
-      userName="Tran Thi B"
+      
     >
       <div className="max-w-[1500px] mx-auto pb-10 px-4">
         {/* Breadcrumb */}

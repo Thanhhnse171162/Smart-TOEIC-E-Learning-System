@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Heart, RotateCcw, Search, Star, Volume2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Heart, RotateCcw, Search, Star, Volume2, ChevronLeft, ChevronRight, Loader2, Lock, BookOpen, Sparkles, CheckCircle2, XCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ApiDataBadge } from "@/components/api-data-badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,20 +13,63 @@ import { vocabularyTopics } from "@/layers/data/mock/data";
 import { Badge } from "@/components/ui/badge";
 import { useVocabularies } from "@/hooks/use-vocabularies";
 import { getStoredUser } from "@/lib/auth/session";
+import Link from "next/link";
+
+const FREE_WORD_LIMIT = 10;
 
 const vibrantBlue = "#0b5ce5";
 
 export default function VocabularyPage() {
   const { words, loading, fromApi } = useVocabularies();
   const user = getStoredUser();
+  const [selectedTopic, setSelectedTopic] = useState(vocabularyTopics[0]?.id || "business");
   const [flipped, setFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
-  const word = words[current];
+  
+  // Quiz states
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
+
+  // TODO: Replace with real enrollment check from API
+  const isEnrolled = false;
+
+  const filteredWords = useMemo(() => {
+    return words.filter(w => w.topic === selectedTopic);
+  }, [words, selectedTopic]);
+
+  const word = filteredWords[current];
+  const isLocked = !isEnrolled && current >= FREE_WORD_LIMIT;
+  const isQuizLocked = !isEnrolled && currentQuizIndex >= FREE_WORD_LIMIT;
+
+  // Reset states when topic changes
+  useEffect(() => {
+    setCurrent(0);
+    setFlipped(false);
+    setCurrentQuizIndex(0);
+    setSelectedAnswer(null);
+    setIsAnswerChecked(false);
+    setQuizScore(0);
+  }, [selectedTopic]);
+
+  const quizQuestions = useMemo(() => {
+    return filteredWords.map(w => {
+      const otherMeanings = words.filter(other => other.id !== w.id).map(other => other.meaning);
+      const shuffledOthers = [...otherMeanings].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const options = [w.meaning, ...shuffledOthers].sort(() => 0.5 - Math.random());
+      return {
+        word: w.word,
+        options,
+        correctAnswer: w.meaning
+      };
+    });
+  }, [filteredWords, words]);
 
   const handleNext = () => {
     setFlipped(false);
     setTimeout(() => {
-      if (current < words.length - 1) setCurrent(c => c + 1);
+      if (current < filteredWords.length - 1) setCurrent(c => c + 1);
     }, 150);
   };
 
@@ -59,7 +102,7 @@ export default function VocabularyPage() {
   }
 
   return (
-    <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" subtitle={`${words.length} words`} userName={user?.fullName}>
+    <DashboardLayout sidebarItems={studentSidebarItems} title="Vocabulary Builder" subtitle={`${filteredWords.length} words in this topic`} userName={user?.fullName}>
       <div className="mb-4">
         <ApiDataBadge fromApi={fromApi} />
       </div>
@@ -77,7 +120,15 @@ export default function VocabularyPage() {
       {/* Filter Tags */}
       <div className="flex flex-wrap gap-3 mb-8">
         {vocabularyTopics.map((t) => (
-          <button key={t.id} className="rounded-full border border-slate-200 bg-white hover:border-slate-300 transition-colors px-5 py-1.5 text-[13px] font-bold text-slate-700 shadow-sm">
+          <button 
+            key={t.id} 
+            onClick={() => setSelectedTopic(t.id)}
+            className={`rounded-full border transition-colors px-5 py-1.5 text-[13px] font-bold shadow-sm ${
+              selectedTopic === t.id 
+                ? "bg-[#0b5ce5] border-[#0b5ce5] text-white" 
+                : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+            }`}
+          >
             {t.label}
           </button>
         ))}
@@ -118,56 +169,92 @@ export default function VocabularyPage() {
             </button>
             <button 
               onClick={handleNext} 
-              disabled={current === words.length - 1}
+              disabled={current === filteredWords.length - 1 || (!isEnrolled && current >= FREE_WORD_LIMIT - 1)}
               className="absolute -right-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-[#0b5ce5] hover:border-[#0b5ce5] disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all z-10 hidden md:flex"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
 
-            <div 
-              className="relative w-full aspect-[4/3] sm:aspect-[16/9] cursor-pointer"
-              style={{ perspective: "1000px" }}
-              onClick={() => setFlipped(!flipped)}
-            >
-              <div 
-                className="relative w-full h-full transition-transform duration-500 ease-in-out"
-                style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
-              >
-                {/* Front */}
-                <Card 
-                  className="absolute inset-0 rounded-[24px] border-2 border-slate-100 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center p-8 bg-white"
-                  style={{ backfaceVisibility: "hidden" }}
-                >
-                  <div className="absolute top-8 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#f0f4f8] text-[#334155] px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide capitalize">{word.topic}</span>
-                  </div>
-                  
-                  <h2 className="text-4xl sm:text-6xl font-black text-slate-900 mb-6 tracking-tight">{word.word}</h2>
-                  
-                  <button className="flex items-center gap-2 text-slate-600 hover:text-[#0b5ce5] font-semibold text-[15px] transition-colors mb-12" onClick={(e) => e.stopPropagation()}>
-                    <Volume2 className="w-5 h-5" />
-                    Pronunciation
-                  </button>
-                  
-                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-                    <p className="text-[#64748b] text-[13px] font-medium">Click to reveal meaning</p>
-                  </div>
-                </Card>
+            {/* PAYWALL OVERLAY */}
+            {isLocked ? (
+              <div className="relative w-full aspect-[4/3] sm:aspect-[16/9]">
+                <Card className="absolute inset-0 rounded-[24px] border-2 border-slate-200 shadow-lg flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-hidden">
+                  {/* Decorative blurred circles */}
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-200/30 rounded-full blur-3xl" />
+                  <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-200/20 rounded-full blur-3xl" />
 
-                {/* Back */}
-                <Card 
-                  className="absolute inset-0 rounded-[24px] border-2 border-slate-100 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center p-8 bg-white"
-                  style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-                >
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-6 text-center leading-tight">{word.meaning}</h2>
-                  <p className="text-lg text-slate-500 italic font-medium text-center">&quot;{word.example}&quot;</p>
-                  
-                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-                    <p className="text-[#64748b] text-[13px] font-medium">Click to see word</p>
+                  <div className="relative z-10 flex flex-col items-center text-center max-w-sm">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0b5ce5] to-[#6366f1] flex items-center justify-center mb-5 shadow-lg">
+                      <Lock className="w-7 h-7 text-white" />
+                    </div>
+
+                    <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Free Preview Ended</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed mb-1">
+                      You&apos;ve explored <span className="font-bold text-[#0b5ce5]">{FREE_WORD_LIMIT} words</span> for free.
+                      Enroll in a course to unlock <span className="font-bold text-slate-700">all {filteredWords.length} words</span> in this topic, flashcards, quizzes, and more!
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 my-5 text-xs font-semibold text-slate-500">
+                      <span className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-full px-3 py-1 shadow-sm">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Unlimited Vocabulary
+                      </span>
+                      <span className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-full px-3 py-1 shadow-sm">
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-500" /> Full Course Access
+                      </span>
+                    </div>
+
+                    <Link href="/student/courses">
+                      <Button className="rounded-xl h-12 px-8 font-bold text-[15px] shadow-md" style={{ backgroundColor: vibrantBlue }}>
+                        Browse Courses
+                      </Button>
+                    </Link>
+                    <p className="text-[11px] text-slate-400 mt-3">Starting from <span className="font-bold text-slate-600">$19.00</span> / course</p>
                   </div>
                 </Card>
               </div>
-            </div>
+            ) : (
+              /* Normal Flashcard */
+              <div 
+                className="relative w-full aspect-[4/3] sm:aspect-[16/9] cursor-pointer"
+                style={{ perspective: "1000px" }}
+                onClick={() => setFlipped(!flipped)}
+              >
+                <div 
+                  className="relative w-full h-full transition-transform duration-500 ease-in-out"
+                  style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                >
+                  {/* Front */}
+                  <Card 
+                    className="absolute inset-0 rounded-[24px] border-2 border-slate-100 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center p-8 bg-white"
+                    style={{ backfaceVisibility: "hidden" }}
+                  >
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2">
+                      <span className="bg-[#f0f4f8] text-[#334155] px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide capitalize">{word.topic}</span>
+                    </div>
+                    <h2 className="text-4xl sm:text-6xl font-black text-slate-900 mb-6 tracking-tight">{word.word}</h2>
+                    <button className="flex items-center gap-2 text-slate-600 hover:text-[#0b5ce5] font-semibold text-[15px] transition-colors mb-12" onClick={(e) => e.stopPropagation()}>
+                      <Volume2 className="w-5 h-5" />
+                      Pronunciation
+                    </button>
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+                      <p className="text-[#64748b] text-[13px] font-medium">Click to reveal meaning</p>
+                    </div>
+                  </Card>
+
+                  {/* Back */}
+                  <Card 
+                    className="absolute inset-0 rounded-[24px] border-2 border-slate-100 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] flex flex-col items-center justify-center p-8 bg-white"
+                    style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                  >
+                    <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-6 text-center leading-tight">{word.meaning}</h2>
+                    <p className="text-lg text-slate-500 italic font-medium text-center">&quot;{word.example}&quot;</p>
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+                      <p className="text-[#64748b] text-[13px] font-medium">Click to see word</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
 
             {/* Bottom Controls */}
             <div className="mt-8 flex flex-col items-center justify-center gap-5">
@@ -182,7 +269,9 @@ export default function VocabularyPage() {
                    <Star className="w-5 h-5" />
                  </button>
               </div>
-              <p className="text-slate-500 font-bold text-[14px] tracking-widest">{current + 1} / {words.length}</p>
+              <p className="text-slate-500 font-bold text-[14px] tracking-widest">
+                {current + 1} / {isEnrolled ? filteredWords.length : `${FREE_WORD_LIMIT} free`}
+              </p>
             </div>
           </div>
         </TabsContent>
@@ -207,22 +296,132 @@ export default function VocabularyPage() {
         </TabsContent>
 
         <TabsContent value="quiz">
-          <Card className="rounded-[24px] max-w-2xl mx-auto border-2 border-slate-100 shadow-sm p-8">
-            <div className="text-center mb-8">
-               <span className="bg-[#f0f4f8] text-[#334155] px-4 py-1.5 rounded-full text-[13px] font-bold tracking-wide">Question 1/10</span>
-            </div>
-            <h3 className="text-2xl font-extrabold text-slate-800 text-center mb-10">What does <span className="text-[#0b5ce5]">&quot;negotiate&quot;</span> mean?</h3>
-            <div className="space-y-4">
-              {["To argue with someone", "To discuss formally to reach an agreement", "To cancel a meeting", "To postpone a project"].map((opt, i) => (
-                <button key={i} className="w-full text-left rounded-[16px] border-2 border-slate-100 p-5 text-[16px] font-bold text-slate-700 hover:border-[#0b5ce5] hover:bg-[#f0f5ff] transition-all">
-                   <span className="mr-3 text-slate-400">{String.fromCharCode(65 + i)}.</span> {opt}
-                </button>
-              ))}
-            </div>
-            <Button className="w-full rounded-[14px] h-14 mt-8 font-bold text-lg shadow-sm" style={{ backgroundColor: vibrantBlue }}>
-              Check Answer
-            </Button>
-          </Card>
+          <div className="max-w-2xl mx-auto">
+            {isQuizLocked ? (
+              <Card className="rounded-[24px] border-2 border-slate-200 shadow-lg flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-hidden relative min-h-[400px]">
+                {/* Decorative blurred circles */}
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-200/30 rounded-full blur-3xl" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-200/20 rounded-full blur-3xl" />
+
+                <div className="relative z-10 flex flex-col items-center text-center max-w-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0b5ce5] to-[#6366f1] flex items-center justify-center mb-5 shadow-lg">
+                    <Lock className="w-7 h-7 text-white" />
+                  </div>
+
+                  <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Free Quiz Limit Reached</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-1">
+                    You&apos;ve completed the free quiz preview of <span className="font-bold text-[#0b5ce5]">{FREE_WORD_LIMIT} questions</span>.
+                    Enroll now to continue practicing and unlock full features.
+                  </p>
+
+                  <Link href="/student/courses" className="mt-6">
+                    <Button className="rounded-xl h-12 px-8 font-bold text-[15px] shadow-md" style={{ backgroundColor: vibrantBlue }}>
+                      Browse Courses
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            ) : currentQuizIndex >= filteredWords.length ? (
+              <Card className="rounded-[24px] border-2 border-slate-100 shadow-sm p-10 text-center min-h-[400px] flex flex-col items-center justify-center">
+                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <h2 className="text-3xl font-extrabold text-slate-800 mb-4">Quiz Completed!</h2>
+                <p className="text-lg text-slate-500 mb-8">
+                  You scored <span className="font-bold text-[#0b5ce5]">{quizScore}</span> out of {filteredWords.length} in this topic.
+                </p>
+                <Button 
+                  onClick={() => {
+                    setCurrentQuizIndex(0);
+                    setQuizScore(0);
+                    setSelectedAnswer(null);
+                    setIsAnswerChecked(false);
+                  }}
+                  className="rounded-xl h-12 px-8 font-bold text-[15px]" style={{ backgroundColor: vibrantBlue }}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" /> Try Again
+                </Button>
+              </Card>
+            ) : (
+              <Card className="rounded-[24px] border-2 border-slate-100 shadow-sm p-8">
+                <div className="text-center mb-8 flex items-center justify-between">
+                  <span className="bg-[#f0f4f8] text-[#334155] px-4 py-1.5 rounded-full text-[13px] font-bold tracking-wide">
+                    Question {currentQuizIndex + 1}/{isEnrolled ? filteredWords.length : FREE_WORD_LIMIT}
+                  </span>
+                  <span className="text-sm font-bold text-slate-500">Score: {quizScore}</span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-slate-800 text-center mb-10">
+                  What does <span className="text-[#0b5ce5]">&quot;{quizQuestions[currentQuizIndex]?.word}&quot;</span> mean?
+                </h3>
+                <div className="space-y-4">
+                  {quizQuestions[currentQuizIndex]?.options.map((opt, i) => {
+                    const isSelected = selectedAnswer === opt;
+                    const isCorrect = opt === quizQuestions[currentQuizIndex].correctAnswer;
+                    
+                    let btnClass = "border-slate-100 text-slate-700 hover:border-[#0b5ce5] hover:bg-[#f0f5ff]";
+                    let icon = null;
+
+                    if (isAnswerChecked) {
+                      if (isCorrect) {
+                        btnClass = "border-emerald-500 bg-emerald-50 text-emerald-800";
+                        icon = <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
+                      } else if (isSelected) {
+                        btnClass = "border-red-500 bg-red-50 text-red-800";
+                        icon = <XCircle className="w-5 h-5 text-red-500" />;
+                      } else {
+                        btnClass = "border-slate-100 text-slate-400 opacity-50";
+                      }
+                    } else if (isSelected) {
+                      btnClass = "border-[#0b5ce5] bg-[#0b5ce5]/5 text-[#0b5ce5]";
+                    }
+
+                    return (
+                      <button 
+                        key={i} 
+                        disabled={isAnswerChecked}
+                        onClick={() => setSelectedAnswer(opt)}
+                        className={`w-full text-left flex items-center justify-between rounded-[16px] border-2 p-5 text-[16px] font-bold transition-all ${btnClass}`}
+                      >
+                        <div>
+                          <span className={isAnswerChecked && isCorrect ? "text-emerald-600 mr-3" : isAnswerChecked && isSelected ? "text-red-600 mr-3" : "text-slate-400 mr-3"}>
+                            {String.fromCharCode(65 + i)}.
+                          </span> 
+                          {opt}
+                        </div>
+                        {icon}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {!isAnswerChecked ? (
+                  <Button 
+                    disabled={!selectedAnswer}
+                    onClick={() => {
+                      setIsAnswerChecked(true);
+                      if (selectedAnswer === quizQuestions[currentQuizIndex].correctAnswer) {
+                        setQuizScore(s => s + 1);
+                      }
+                    }}
+                    className="w-full rounded-[14px] h-14 mt-8 font-bold text-lg shadow-sm" style={{ backgroundColor: vibrantBlue }}
+                  >
+                    Check Answer
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => {
+                      setSelectedAnswer(null);
+                      setIsAnswerChecked(false);
+                      setCurrentQuizIndex(i => i + 1);
+                    }}
+                    className="w-full rounded-[14px] h-14 mt-8 font-bold text-lg shadow-sm" style={{ backgroundColor: vibrantBlue }}
+                  >
+                    Next Question
+                  </Button>
+                )}
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </DashboardLayout>

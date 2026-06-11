@@ -26,7 +26,7 @@ export default function AddQuestionPage() {
       sidebarItems={teacherSidebarItems}
       title="Question Bank"
       subtitle="Add New Question"
-      userName="Tran Thi B"
+      
     >
       <div className="min-h-[calc(100vh-120px)] flex flex-col">
         {/* Breadcrumb */}
