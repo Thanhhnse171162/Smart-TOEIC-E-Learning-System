@@ -1,5 +1,14 @@
 import { apiRequest } from "@/lib/api/client";
-import type { ApiCourse, ApiQuestion, ApiTOEICTest, ApiUser, ApiVocabulary } from "@/layers/data/api/types";
+import type { CreateTeacherQuestionPayload } from "@/lib/teacher-questions-api";
+import type {
+  ApiCourse,
+  ApiQuestion,
+  ApiTeacherQuestion,
+  ApiTeacherQuestionDetail,
+  ApiTOEICTest,
+  ApiUser,
+  ApiVocabulary,
+} from "@/layers/data/api/types";
 
 export async function apiGetUsers() {
   return apiRequest<ApiUser[]>("/api/users");
@@ -36,6 +45,53 @@ export async function apiGetVocabulariesByTopic(topic: string) {
 
 export async function apiGetQuestionsByPart(part: number) {
   return apiRequest<ApiQuestion[]>(`/api/questions/part/${part}`);
+}
+
+export async function apiGetTeacherQuestions(params?: {
+  part?: number;
+  type?: string;
+  difficulty?: string;
+  search?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.part) query.set("part", String(params.part));
+  if (params?.type) query.set("type", params.type);
+  if (params?.difficulty) query.set("difficulty", params.difficulty);
+  if (params?.search) query.set("search", params.search);
+  const qs = query.toString();
+  return apiRequest<ApiTeacherQuestion[]>(`/api/teacher/questions${qs ? `?${qs}` : ""}`, {
+    auth: true,
+  });
+}
+
+export async function apiGetTeacherQuestionById(id: number) {
+  return apiRequest<ApiTeacherQuestionDetail>(`/api/teacher/questions/${id}`, { auth: true });
+}
+
+export async function apiUpdateTeacherQuestion(
+  id: number,
+  data: Record<string, unknown>
+) {
+  return apiRequest<ApiTeacherQuestionDetail>(`/api/teacher/questions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    auth: true,
+  });
+}
+
+export async function apiDeleteTeacherQuestion(id: number) {
+  return apiRequest<{ message: string }>(`/api/teacher/questions/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export async function apiCreateTeacherQuestion(data: CreateTeacherQuestionPayload) {
+  return apiRequest<ApiTeacherQuestionDetail>("/api/teacher/questions", {
+    method: "POST",
+    body: JSON.stringify(data),
+    auth: true,
+  });
 }
 
 export async function apiGetTOEICTests() {

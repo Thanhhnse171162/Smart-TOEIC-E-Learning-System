@@ -63,6 +63,27 @@ export interface ApiQuestion {
   questionOrder: number;
 }
 
+export interface ApiTeacherQuestion {
+  questionId: number;
+  testId?: number | null;
+  createdByUserId?: number | null;
+  part: number;
+  type: string;
+  difficulty: string;
+  text: string;
+  options: Record<string, string>;
+  audioUrl?: string | null;
+  imageUrl?: string | null;
+  questionOrder: number;
+  createdDate: string;
+  updatedDate?: string | null;
+}
+
+export interface ApiTeacherQuestionDetail extends ApiTeacherQuestion {
+  correctAnswer: string;
+  explanation?: string | null;
+}
+
 export interface ApiTOEICTest {
   testId: number;
   title: string;

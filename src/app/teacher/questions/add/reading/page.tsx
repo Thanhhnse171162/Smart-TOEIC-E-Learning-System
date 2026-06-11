@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { USE_API } from "@/lib/api/config";
+import { apiCreateTeacherQuestion } from "@/layers/data/api/resources.api";
+import { buildReadingQuestionPayload } from "@/lib/teacher-questions-api";
 import {
   Sparkles,
   Upload,
@@ -41,9 +44,11 @@ export default function ReadingQuestionForm() {
   const [partSelector, setPartSelector] = useState("7");
   const [difficulty, setDifficulty] = useState("Medium");
   const [topicTags, setTopicTags] = useState<string[]>(["Business", "Marketing"]);
-  const [assignToTest, setAssignToTest] = useState("Weekly Practice #12");
+  const [assignToTest, setAssignToTest] = useState("");
   const [newTag, setNewTag] = useState("");
   const [passageText, setPassageText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // AI Generate Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -165,25 +170,9 @@ export default function ReadingQuestionForm() {
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([
     {
       id: 1,
-      questionText: "What is the main purpose of the email?",
-      options: [
-        "To announce a company merger",
-        "To inform employees about an office move",
-        "To request employee feedback",
-        "To schedule a team meeting",
-      ],
-      correctAnswer: 1,
-    },
-    {
-      id: 2,
-      questionText: "When will the relocation take place?",
-      options: [
-        "Friday, October 13th",
-        "Next week",
-        "The weekend of October 14th-15th",
-        "Next month",
-      ],
-      correctAnswer: 2,
+      questionText: "",
+      options: ["", "", "", ""],
+      correctAnswer: null,
     },
   ]);
 
@@ -236,31 +225,90 @@ export default function ReadingQuestionForm() {
     }
   };
 
+  const validateForm = () => {
+    if (!USE_API) {
+      setSaveError("API is disabled. Set NEXT_PUBLIC_USE_API=true in .env.local");
+      return false;
+    }
+    const part = Number(partSelector);
+    if (part >= 6 && !passageText.trim()) {
+      setSaveError("Reading passage is required for Part 6 and Part 7.");
+      return false;
+    }
+    for (let i = 0; i < subQuestions.length; i++) {
+      const sq = subQuestions[i];
+      if (!sq.questionText.trim()) {
+        setSaveError(`Question ${i + 1}: text is required.`);
+        return false;
+      }
+      if (sq.options.some((o) => !o.trim())) {
+        setSaveError(`Question ${i + 1}: all 4 options are required.`);
+        return false;
+      }
+      if (sq.correctAnswer === null) {
+        setSaveError(`Question ${i + 1}: select the correct answer.`);
+        return false;
+      }
+    }
+    setSaveError(null);
+    return true;
+  };
+
+  const saveQuestions = async (closeAfter: boolean) => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    setSaveError(null);
+    const part = Number(partSelector);
+
+    try {
+      for (let i = 0; i < subQuestions.length; i++) {
+        const sq = subQuestions[i];
+        const explanation =
+          part >= 6 && i === 0 && passageText.trim()
+            ? passageText.trim()
+            : undefined;
+
+        const payload = buildReadingQuestionPayload({
+          part,
+          difficulty,
+          questionText: sq.questionText.trim(),
+          options: sq.options.map((o) => o.trim()),
+          correctIndex: sq.correctAnswer!,
+          explanation,
+          questionOrder: i + 1,
+          testId: assignToTest ? Number(assignToTest) || null : null,
+        });
+
+        await apiCreateTeacherQuestion(payload);
+      }
+
+      if (closeAfter) {
+        router.push("/teacher/questions");
+      } else {
+        setSubQuestions([
+          { id: 1, questionText: "", options: ["", "", "", ""], correctAnswer: null },
+        ]);
+        setPassageText("");
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save questions");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const partOptions = [
     { value: "5", label: "Part 5: Incomplete Sentences" },
     { value: "6", label: "Part 6: Text Completion" },
     { value: "7", label: "Part 7: Reading Comprehension" },
   ];
 
-  // Sample passage for live preview
-  const samplePassage = passageText || `Read the following passage and answer the questions that follow.
-
-## Email
-From: J. Chen <jchen@techsolutions.com>
-To: All Employees
-Subject: Upcoming Office Relocation
-
-Dear Team,
-
-As you are aware, our company has been growing steadily over the past few years, and we have outgrown our current office space. I am pleased to announce that we will be relocating to a larger, more modern facility in the downtown area next month. The new office will provide us with more workspace, better meeting rooms, and improved amenities.
-
-We anticipate that the move will take place over the weekend of October 14th-15th. Please ensure that your personal items and important files are packed and labeled by Friday, October 13th. Detailed instructions on the packing process and the new office layout will be provided next week.
-
-Thank you for your cooperation and continued hard work.
-
-Sincerely,
-J. Chen
-CEO, Tech Solutions`;
+  const samplePassage =
+    passageText ||
+    (Number(partSelector) >= 6
+      ? "Enter your reading passage above to preview it here."
+      : "Part 5 questions do not require a shared passage.");
 
   return (
     <DashboardLayout
@@ -274,7 +322,7 @@ CEO, Tech Solutions`;
         <nav className="flex items-center gap-2 text-sm font-medium text-slate-500 mb-2 pt-2">
           <button onClick={() => router.push("/teacher/questions")} className="hover:text-indigo-600 transition-colors">Question Bank</button>
           <span className="text-slate-300">/</span>
-          <button onClick={() => router.push("/teacher/questions/add")} className="hover:text-indigo-600 transition-colors">Add New Question</button>
+          <button onClick={() => router.push("/teacher/questions/add/reading")} className="hover:text-indigo-600 transition-colors">Add Reading Question</button>
           <span className="text-slate-300">/</span>
           <span className="text-slate-800 font-semibold">Reading Task</span>
         </nav>
@@ -350,21 +398,14 @@ CEO, Tech Solutions`;
                   </div>
                 </div>
 
-                {/* Assign to Test */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500">Assign to Test</label>
-                  <div className="relative">
-                    <select
-                      value={assignToTest}
-                      onChange={(e) => setAssignToTest(e.target.value)}
-                      className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold bg-white appearance-none focus:ring-2 focus:ring-indigo-500 outline-none"
-                    >
-                      <option>Weekly Practice #12</option>
-                      <option>Full Test #3</option>
-                      <option>Mini Test #5</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <label className="text-xs font-bold text-slate-500">Assign to Test (optional)</label>
+                  <Input
+                    value={assignToTest}
+                    onChange={(e) => setAssignToTest(e.target.value)}
+                    placeholder="Test ID (leave empty if unassigned)"
+                    className="h-10 rounded-xl border-slate-200 text-sm font-semibold"
+                  />
                 </div>
               </div>
             </div>
@@ -527,27 +568,35 @@ CEO, Tech Solutions`;
           </div>
         </div>
 
+        {saveError && (
+          <p className="mb-4 text-sm text-destructive font-medium">{saveError}</p>
+        )}
+
         {/* Bottom Action Bar */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
           <Button
             variant="outline"
             onClick={() => router.push("/teacher/questions")}
+            disabled={saving}
             className="rounded-xl font-bold h-11 px-6 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 shadow-sm"
           >
-            Save Draft
+            Cancel
           </Button>
           <div className="flex gap-3">
             <Button
               variant="outline"
+              disabled={saving}
+              onClick={() => saveQuestions(false)}
               className="rounded-xl font-bold h-11 px-6 border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200 shadow-sm"
             >
-              Save & Add Next
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & Add Next"}
             </Button>
             <Button
-              onClick={() => router.push("/teacher/questions")}
-              className="rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold h-11 px-6 shadow-sm gap-2"
+              disabled={saving}
+              onClick={() => saveQuestions(true)}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 px-6 shadow-sm gap-2"
             >
-              Save & Close
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & Close"}
             </Button>
           </div>
         </div>

@@ -1,144 +1,45 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { ApiDataBadge } from "@/components/api-data-badge";
 import { teacherSidebarItems } from "@/lib/navigation";
-import { Search, Plus, Camera, MessageCircle, Users, Mic, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, PlayCircle, CheckCircle2 } from "lucide-react";
+import {
+  enrichQuestionDetail,
+  useTeacherQuestions,
+  type QuestionGroup,
+} from "@/hooks/use-teacher-questions";
+import { apiDeleteTeacherQuestion, apiUpdateTeacherQuestion } from "@/layers/data/api/resources.api";
+import { downloadTeacherQuestionsExport } from "@/lib/teacher-questions-api";
+import { Search, Plus, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, CheckCircle2, Loader2, MessageCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// --- Types ---
-type SubQuestion = {
-  subId: string;
-  questionText: string;
-  options: string[];
-  correctAnswer: string;
-  explanation: string;
-};
-
-type QuestionGroup = {
-  id: string;
-  isGroup: boolean;
-  part: number;
-  difficulty: "Easy" | "Medium" | "Hard";
-  topic: string;
-  sharedContent: {
-    audioUrl: string | null;
-    passageText: string | null;
-  };
-  usage: string[];
-  text: string;
-  subQuestions: SubQuestion[];
-};
-
-// --- Mock Data ---
-const MOCK_QUESTIONS: QuestionGroup[] = [
-  {
-    id: "Q1001",
-    isGroup: true,
-    part: 1,
-    difficulty: "Easy",
-    topic: "Grammar",
-    sharedContent: { audioUrl: "/audio/sample.mp3", passageText: null },
-    usage: ["Weekly #12", "Full #3"],
-    text: "Part 1 | The woman is holding a...",
-    subQuestions: [
-      { subId: "Q1001.1", questionText: "What is the woman holding?", options: ["A book", "A pen", "A cup", "A bag"], correctAnswer: "A", explanation: "The woman clearly holds a book." },
-      { subId: "Q1001.2", questionText: "Where is the woman standing?", options: ["By the window", "Near the door", "In the garden", "At the desk"], correctAnswer: "D", explanation: "She is at the desk." }
-    ]
-  },
-  {
-    id: "Q1002",
-    isGroup: true,
-    part: 2,
-    difficulty: "Medium",
-    topic: "Vocabulary",
-    sharedContent: { audioUrl: "/audio/sample2.mp3", passageText: null },
-    usage: ["Full #3"],
-    text: "Part 2 | Where is the nearest post office?",
-    subQuestions: [
-      { subId: "Q1002.1", questionText: "Where is the post office?", options: ["Next to bank", "Down street", "I don't know", "It is closed"], correctAnswer: "B", explanation: "The speaker says down the street." },
-      { subId: "Q1002.2", questionText: "What time does it close?", options: ["5 PM", "6 PM", "7 PM", "8 PM"], correctAnswer: "A", explanation: "Closes at 5 PM." }
-    ]
-  },
-  {
-    id: "Q1003",
-    isGroup: true,
-    part: 3,
-    difficulty: "Hard",
-    topic: "Business",
-    sharedContent: { audioUrl: "/audio/sample3.mp3", passageText: null },
-    usage: ["Weekly #12", "Full #3"],
-    text: "Part 3 | What are the speakers discussing?",
-    subQuestions: [
-      { subId: "Q1003.1", questionText: "What does the woman ask for?", options: ["A refund", "A different size", "A manager", "Store credit"], correctAnswer: "C", explanation: "The woman clearly states she wants a manager." },
-      { subId: "Q1003.2", questionText: "What does the man suggest?", options: ["Option A", "Option B", "Option C", "Option D"], correctAnswer: "A", explanation: "The man proposes Option A." }
-    ]
-  },
-  {
-    id: "Q1004",
-    isGroup: true,
-    part: 4,
-    difficulty: "Medium",
-    topic: "Announcement",
-    sharedContent: { audioUrl: "/audio/sample4.mp3", passageText: null },
-    usage: ["Full #3"],
-    text: "Part 4 | According to the speaker, what will happen...",
-    subQuestions: [
-      { subId: "Q1004.1", questionText: "What will happen?", options: ["Delay", "Cancel", "Proceed", "Move"], correctAnswer: "C", explanation: "It will proceed." },
-      { subId: "Q1004.2", questionText: "Who should the listeners contact?", options: ["Manager", "Support", "HR", "No one"], correctAnswer: "B", explanation: "Contact support for help." },
-      { subId: "Q1004.3", questionText: "When is the new date?", options: ["Monday", "Friday", "Next Week", "Unknown"], correctAnswer: "A", explanation: "Rescheduled to Monday." }
-    ]
-  },
-  {
-    id: "Q1005",
-    isGroup: true,
-    part: 5,
-    difficulty: "Easy",
-    topic: "Grammar",
-    sharedContent: { audioUrl: null, passageText: null },
-    usage: [],
-    text: "Part 5 | The new policy ___ effect next month.",
-    subQuestions: [
-      { subId: "Q1005.1", questionText: "The new policy ___ effect next month.", options: ["takes", "taking", "took", "take"], correctAnswer: "A", explanation: "Takes effect is correct." }
-    ]
-  },
-  {
-    id: "Q1006",
-    isGroup: true,
-    part: 6,
-    difficulty: "Hard",
-    topic: "Email",
-    sharedContent: { audioUrl: null, passageText: "Dear Mr. Kim,\n\nI am writing to inquire about the latest software update. We noticed several bugs in the reporting module. Please fix them by Friday.\n\nBest,\nSarah" },
-    usage: [],
-    text: "Part 6 | Dear Mr. Kim, I am writing to...",
-    subQuestions: [
-      { subId: "Q1006.1", questionText: "What is the purpose of the email?", options: ["Complaint", "Inquiry", "Application", "Invitation"], correctAnswer: "B", explanation: "Inquiry about product." },
-      { subId: "Q1006.2", questionText: "When is the deadline?", options: ["Monday", "Tuesday", "Wednesday", "Friday"], correctAnswer: "D", explanation: "Friday is stated." },
-      { subId: "Q1006.3", questionText: "Who should be contacted?", options: ["HR", "IT", "Sales", "Manager"], correctAnswer: "A", explanation: "Contact HR." }
-    ]
-  }
-];
-
 export default function TeacherQuestionsPage() {
   const router = useRouter();
-  const [questions, setQuestions] = useState<QuestionGroup[]>(MOCK_QUESTIONS);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPart, setFilterPart] = useState<string>("all");
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterTopic, setFilterTopic] = useState<string>("all");
   const [unusedOnly, setUnusedOnly] = useState(false);
+
+  const { questions, setQuestions, loading, fromApi, error, refetch } = useTeacherQuestions({
+    part: filterPart,
+    difficulty: filterDifficulty,
+    search: searchTerm,
+  });
+  const readingQuestions = useMemo(
+    () => questions.filter((q) => q.part >= 5),
+    [questions]
+  );
 
   // Drawer state
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -195,7 +96,7 @@ export default function TeacherQuestionsPage() {
   const confirmChildSelection = (selectAll: boolean) => {
     if (!confirmDialog) return;
     const { parentId, subId } = confirmDialog;
-    const group = questions.find(q => q.id === parentId);
+    const group = readingQuestions.find(q => q.id === parentId);
     
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -209,29 +110,101 @@ export default function TeacherQuestionsPage() {
     setConfirmDialog(null);
   };
 
+  const stats = useMemo(() => {
+    const total = readingQuestions.reduce((sum, q) => sum + q.subQuestions.length, 0);
+    const used = readingQuestions.filter((q) => q.usage.length > 0).length;
+    const unused = readingQuestions.length - used;
+    const partCounts = Object.fromEntries(
+      [5, 6, 7].map((part) => [
+        part,
+        readingQuestions
+          .filter((q) => q.part === part)
+          .reduce((sum, q) => sum + q.subQuestions.length, 0),
+      ])
+    ) as Record<number, number>;
+    return { total, used, unused, partCounts };
+  }, [readingQuestions]);
+
   // Preview Drawer
-  const openPreview = (group: QuestionGroup) => {
-    setPreviewData(group);
+  const openPreview = async (group: QuestionGroup) => {
+    const enriched = await enrichQuestionDetail(group);
+    setPreviewData(enriched);
     setIsPreviewOpen(true);
   };
 
   // Edit Drawer
-  const openEdit = (group: QuestionGroup) => {
-    setEditData(JSON.parse(JSON.stringify(group))); // deep clone
+  const openEdit = async (group: QuestionGroup) => {
+    const enriched = await enrichQuestionDetail(group);
+    setEditData(JSON.parse(JSON.stringify(enriched)));
     setIsEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleDelete = async (group: QuestionGroup) => {
+    if (!confirm(`Delete question #${group.id}?`)) return;
+    try {
+      if (fromApi) {
+        await apiDeleteTeacherQuestion(group.questionId);
+      }
+      setQuestions((prev) => prev.filter((q) => q.id !== group.id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete question");
+    }
+  };
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveEdit = async () => {
     if (!editData) return;
-    setQuestions(prev => prev.map(q => q.id === editData.id ? editData : q));
-    setIsEditOpen(false);
+    const sq = editData.subQuestions[0];
+    if (!sq) return;
+
+    setSaving(true);
+    try {
+      const explanation =
+        editData.part >= 6 && editData.sharedContent.passageText
+          ? editData.sharedContent.passageText
+          : sq.explanation || undefined;
+
+      if (fromApi) {
+        await apiUpdateTeacherQuestion(editData.questionId, {
+          part: editData.part,
+          type: "reading",
+          difficulty: editData.difficulty.toLowerCase(),
+          text: sq.questionText || editData.text,
+          questionText: sq.questionText || editData.text,
+          optionA: sq.options[0] ?? "",
+          optionB: sq.options[1] ?? "",
+          optionC: sq.options[2] ?? "",
+          optionD: sq.options[3] ?? "",
+          correctAnswer: sq.correctAnswer,
+          explanation,
+        });
+        await refetch();
+      } else {
+        setQuestions((prev) => prev.map((q) => (q.id === editData.id ? editData : q)));
+      }
+      setIsEditOpen(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to update question");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleActionClick = (action: string) => {
-    alert(`${action} feature is coming soon!`);
+  const handleExport = async () => {
+    try {
+      await downloadTeacherQuestionsExport({
+        part: filterPart !== "all" ? Number(filterPart) : undefined,
+        type: "reading",
+        difficulty: filterDifficulty !== "all" ? filterDifficulty.toLowerCase() : undefined,
+        search: searchTerm.trim() || undefined,
+      });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to export questions");
+    }
   };
 
-  const filteredQuestions = questions.filter(q => {
+  const filteredQuestions = readingQuestions.filter(q => {
     if (filterPart !== "all" && q.part.toString() !== filterPart) return false;
     if (filterDifficulty !== "all" && q.difficulty !== filterDifficulty) return false;
     if (filterTopic !== "all" && q.topic !== filterTopic) return false;
@@ -252,35 +225,31 @@ export default function TeacherQuestionsPage() {
     <DashboardLayout 
       sidebarItems={teacherSidebarItems} 
       title="Question Bank" 
-      subtitle="1,250 questions • Parts 1-7" 
+      subtitle={`${stats.total} questions • Parts 5-7`}
       
     >
       <div className="max-w-[1400px] mx-auto pb-10">
         {/* Top Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Questions</p>
-            <p className="text-2xl font-black text-slate-800">1,250</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Listening (Parts 1-4)</p>
-            <p className="text-2xl font-black text-[#4f46e5]">600</p>
+            <p className="text-2xl font-black text-slate-800">{stats.total}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Reading (Parts 5-7)</p>
-            <p className="text-2xl font-black text-emerald-600">650</p>
+            <p className="text-2xl font-black text-emerald-600">{stats.total}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Used Questions</p>
-            <p className="text-2xl font-black text-teal-600">850</p>
+            <p className="text-2xl font-black text-teal-600">{stats.used}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unused Questions</p>
-            <p className="text-2xl font-black text-amber-500">400</p>
+            <p className="text-2xl font-black text-amber-500">{stats.unused}</p>
           </div>
         </div>
 
-        {/* Part Selection Row */}
+        {/* Part Selection Row — Reading only */}
         <div className="flex items-center gap-6 mb-6 overflow-x-auto pb-2 custom-scrollbar px-2">
           <button 
             onClick={() => { setFilterPart('all'); setCurrentPage(1); }}
@@ -288,54 +257,23 @@ export default function TeacherQuestionsPage() {
           >
             All Parts
           </button>
-          
-          <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
-            <div className="flex items-center gap-1.5 text-[#4f46e5] bg-indigo-50/80 px-2.5 py-1 rounded-md">
-              <Mic className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-black uppercase tracking-wider">Listening</span>
-            </div>
-            {[
-              { part: 1, qs: 150 },
-              { part: 2, qs: 150 },
-              { part: 3, qs: 150 },
-              { part: 4, qs: 150 },
-            ].map((p) => {
-              const isActive = filterPart === p.part.toString();
-              return (
-                <button 
-                  key={p.part} 
-                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
-                  className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-[#4f46e5]' : 'text-slate-600 hover:text-[#4f46e5]'}`}
-                >
-                  Part {p.part}
-                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-[#4f46e5] text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {p.qs}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
 
           <div className="flex items-center gap-4 border-l-2 border-slate-200 pl-6">
             <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50/80 px-2.5 py-1 rounded-md">
               <BookOpen className="w-3.5 h-3.5" />
               <span className="text-[11px] font-black uppercase tracking-wider">Reading</span>
             </div>
-            {[
-              { part: 5, qs: 200 },
-              { part: 6, qs: 200 },
-              { part: 7, qs: 250 },
-            ].map((p) => {
-              const isActive = filterPart === p.part.toString();
+            {[5, 6, 7].map((part) => {
+              const isActive = filterPart === part.toString();
               return (
                 <button 
-                  key={p.part} 
-                  onClick={() => { setFilterPart(isActive ? 'all' : p.part.toString()); setCurrentPage(1); }}
+                  key={part} 
+                  onClick={() => { setFilterPart(isActive ? 'all' : part.toString()); setCurrentPage(1); }}
                   className={`shrink-0 flex items-center gap-1.5 font-semibold text-[14px] transition-colors ${isActive ? 'text-emerald-700' : 'text-slate-600 hover:text-emerald-600'}`}
                 >
-                  Part {p.part}
+                  Part {part}
                   <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {p.qs}
+                    {stats.partCounts[part] ?? 0}
                   </span>
                 </button>
               );
@@ -343,8 +281,8 @@ export default function TeacherQuestionsPage() {
           </div>
 
           <div className="flex items-center gap-3 ml-auto pl-4 shrink-0">
-            <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
-            <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
+            <Button variant="outline" onClick={handleExport} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
+            <Button onClick={() => router.push('/teacher/questions/add/reading')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
           </div>
         </div>
 
@@ -366,12 +304,9 @@ export default function TeacherQuestionsPage() {
               className="h-11 rounded-xl border border-slate-200 px-4 appearance-none bg-white font-bold text-slate-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-36 shadow-sm"
             >
               <option value="all">All Parts</option>
-              <optgroup label="Listening">
-                {[1,2,3,4].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
-              </optgroup>
-              <optgroup label="Reading">
-                {[5,6,7].map(n => <option key={n} value={n.toString()}>Part {n}</option>)}
-              </optgroup>
+              {[5, 6, 7].map((n) => (
+                <option key={n} value={n.toString()}>Part {n}</option>
+              ))}
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
@@ -407,7 +342,12 @@ export default function TeacherQuestionsPage() {
             <span className="text-sm font-bold text-slate-700">Unused only</span>
             <Switch checked={unusedOnly} onCheckedChange={(v) => { setUnusedOnly(v); setCurrentPage(1); }} />
           </div>
+          <ApiDataBadge fromApi={fromApi} />
         </div>
+
+        {error && (
+          <p className="mb-4 text-sm text-destructive font-medium">{error}</p>
+        )}
 
         {/* Data Table */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -426,7 +366,19 @@ export default function TeacherQuestionsPage() {
 
           {/* Body */}
           <div className="divide-y divide-slate-100">
-            {paginatedQuestions.map(group => {
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-[#4f46e5]" />
+              </div>
+            ) : paginatedQuestions.length === 0 ? (
+              <div className="py-16 text-center space-y-3">
+                <p className="text-slate-600 font-semibold">No questions in your bank yet.</p>
+                <p className="text-sm text-slate-500">Add your first question to get started.</p>
+                <Button onClick={() => router.push("/teacher/questions/add/reading")} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Add Question
+                </Button>
+              </div>
+            ) : paginatedQuestions.map(group => {
               const isExpanded = expandedIds.has(group.id);
               const groupSubIds = group.isGroup ? group.subQuestions.map(sq => sq.subId) : [group.id];
               const selectedCount = groupSubIds.filter(id => selectedIds.has(id)).length;
@@ -454,11 +406,7 @@ export default function TeacherQuestionsPage() {
                       )}
                       {!group.isGroup && <div className="w-5 shrink-0"></div>}
                       
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${group.part <= 4 ? 'bg-[#4f46e5]' : 'bg-emerald-500'} text-white shadow-sm mt-0.5`}>
-                        {group.part === 1 && <Camera className="w-4 h-4" />}
-                        {group.part === 2 && <MessageCircle className="w-4 h-4" />}
-                        {group.part === 3 && <Users className="w-4 h-4" />}
-                        {group.part === 4 && <Mic className="w-4 h-4" />}
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500 text-white shadow-sm mt-0.5">
                         {group.part === 5 && <PenLine className="w-4 h-4" />}
                         {group.part === 6 && <FileText className="w-4 h-4" />}
                         {group.part === 7 && <BookOpen className="w-4 h-4" />}
@@ -475,7 +423,7 @@ export default function TeacherQuestionsPage() {
                     </div>
 
                     <div className="col-span-1">
-                      <Badge className={`${group.part <= 4 ? 'bg-indigo-500' : 'bg-emerald-500'} text-white border-none shadow-sm rounded-lg px-2.5 py-0.5 text-[11px] font-bold hover:opacity-90`}>Part {group.part}</Badge>
+                      <Badge className="bg-emerald-500 text-white border-none shadow-sm rounded-lg px-2.5 py-0.5 text-[11px] font-bold hover:opacity-90">Part {group.part}</Badge>
                     </div>
 
                     <div className="col-span-1">
@@ -499,7 +447,7 @@ export default function TeacherQuestionsPage() {
                     <div className="col-span-1 flex items-center justify-end gap-2 pr-2 text-slate-400">
                       <button onClick={() => openPreview(group)} className="hover:text-indigo-600 transition-colors p-1"><Eye className="w-4 h-4 stroke-[2.5]" /></button>
                       <button onClick={() => openEdit(group)} className="hover:text-amber-600 transition-colors p-1"><Edit2 className="w-4 h-4 stroke-[2.5]" /></button>
-                      <button onClick={() => handleActionClick('Delete Question')} className="hover:text-rose-600 transition-colors p-1"><Trash2 className="w-4 h-4 stroke-[2.5]" /></button>
+                      <button onClick={() => handleDelete(group)} className="hover:text-rose-600 transition-colors p-1"><Trash2 className="w-4 h-4 stroke-[2.5]" /></button>
                     </div>
                   </div>
 
@@ -529,6 +477,7 @@ export default function TeacherQuestionsPage() {
           </div>
           
           {/* Pagination */}
+          {!loading && filteredQuestions.length > 0 && (
           <div className="p-4 border-t border-slate-200 flex items-center justify-between text-[13px] font-bold text-slate-500 bg-white">
             <span>Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredQuestions.length)} of {filteredQuestions.length}</span>
             <div className="flex gap-1.5">
@@ -563,6 +512,7 @@ export default function TeacherQuestionsPage() {
               </Button>
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -593,35 +543,19 @@ export default function TeacherQuestionsPage() {
               {/* Info Badges & Title */}
               <div className="space-y-4">
                 <div className="flex gap-2">
-                  <Badge className="bg-indigo-500 text-white font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider">Part {previewData.part}</Badge>
+                  <Badge className="bg-emerald-500 text-white font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider">Part {previewData.part}</Badge>
                   <Badge className={`${previewData.difficulty === 'Hard' ? 'bg-rose-500' : previewData.difficulty === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'} text-white font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider`}>{previewData.difficulty}</Badge>
                   <Badge className="bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-0.5 rounded-lg text-[11px] shadow-sm uppercase tracking-wider">{previewData.topic}</Badge>
                 </div>
                 <h3 className="text-[15px] font-bold text-slate-800 leading-relaxed">{previewData.text}</h3>
               </div>
 
-              {/* Shared Content Area */}
-              {(previewData.sharedContent.audioUrl || previewData.sharedContent.passageText) && (
-                <div className="space-y-4">
-                  {previewData.sharedContent.audioUrl && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-                      <button className="w-10 h-10 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shrink-0 hover:bg-[#4338ca] transition-colors shadow-sm">
-                        <PlayCircle className="w-5 h-5 ml-0.5" />
-                      </button>
-                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="w-1/3 h-full bg-[#4f46e5] rounded-full"></div>
-                      </div>
-                      <span className="text-[11px] font-bold text-slate-500">0:45 / 2:30</span>
-                    </div>
-                  )}
-                  {previewData.sharedContent.passageText && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 shadow-sm">
-                      <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">Reading Passage</p>
-                      <p className="text-[14px] text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
-                        {previewData.sharedContent.passageText}
-                      </p>
-                    </div>
-                  )}
+              {previewData.sharedContent.passageText && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 shadow-sm">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">Reading Passage</p>
+                  <p className="text-[14px] text-slate-800 leading-relaxed font-medium whitespace-pre-wrap">
+                    {previewData.sharedContent.passageText}
+                  </p>
                 </div>
               )}
 
@@ -684,7 +618,9 @@ export default function TeacherQuestionsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-                <Button onClick={handleSaveEdit} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold">Save Changes</Button>
+                <Button onClick={handleSaveEdit} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                </Button>
               </div>
             </div>
             
@@ -723,35 +659,17 @@ export default function TeacherQuestionsPage() {
                 </div>
               </div>
 
-              {/* Shared Content */}
               <div className="space-y-4">
-                <h4 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider border-b pb-2">Shared Content</h4>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500">Audio URL</label>
-                    <Input 
-                      value={editData.sharedContent.audioUrl || ""}
-                      onChange={(e) => setEditData({
-                        ...editData, 
-                        sharedContent: {...editData.sharedContent, audioUrl: e.target.value}
-                      })}
-                      placeholder="e.g. /audio/sample.mp3"
-                      className="rounded-xl border-slate-200"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-500">Reading Passage</label>
-                    <textarea 
-                      value={editData.sharedContent.passageText || ""}
-                      onChange={(e) => setEditData({
-                        ...editData, 
-                        sharedContent: {...editData.sharedContent, passageText: e.target.value}
-                      })}
-                      className="w-full rounded-xl border border-slate-200 p-3 min-h-[100px] text-sm"
-                      placeholder="Enter passage text here..."
-                    />
-                  </div>
-                </div>
+                <h4 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider border-b pb-2">Reading Passage</h4>
+                <textarea 
+                  value={editData.sharedContent.passageText || ""}
+                  onChange={(e) => setEditData({
+                    ...editData, 
+                    sharedContent: {...editData.sharedContent, passageText: e.target.value}
+                  })}
+                  className="w-full rounded-xl border border-slate-200 p-3 min-h-[100px] text-sm"
+                  placeholder="Enter passage text here..."
+                />
               </div>
 
               {/* Sub Questions */}
