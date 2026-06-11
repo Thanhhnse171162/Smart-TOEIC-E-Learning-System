@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   BookOpen,
@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { clearSession } from "@/lib/auth/session";
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard,
@@ -46,7 +47,13 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ items, title = "SmartTOEIC" }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  const handleLogout = () => {
+    clearSession(); // Clears localStorage and cookies
+    router.push("/login");
+  };
 
   return (
     <>
@@ -89,13 +96,13 @@ export function DashboardSidebar({ items, title = "SmartTOEIC" }: DashboardSideb
         
         <div className="p-4 pt-4">
           <div className="border-t pt-4">
-            <Link
-              href="/login"
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 transition-colors"
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 transition-colors text-left"
             >
               <LogOut className="h-5 w-5" />
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

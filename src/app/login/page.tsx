@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { getDashboardPathByRole } from "@/lib/auth/routes";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams?.get("registered");
   const [email, setEmail] = useState("student@toeic.com");
   const [password, setPassword] = useState("Password123!");
   const [showPassword, setShowPassword] = useState(false);
@@ -81,8 +83,14 @@ export default function LoginPage() {
             <h2 className="text-3xl font-bold text-foreground mb-2">Log in to your account</h2>
           </div>
 
+          {registered === "1" && !error && (
+            <div className="rounded-xl border border-green-500/50 bg-green-50 px-4 py-3 text-sm text-green-700 mb-4">
+              Account created successfully! Please log in to continue.
+            </div>
+          )}
+
           {error && (
-            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive mb-4">
               {error}
             </div>
           )}

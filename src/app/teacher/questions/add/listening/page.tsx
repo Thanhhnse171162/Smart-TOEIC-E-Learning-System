@@ -17,7 +17,9 @@ import {
   MoreHorizontal,
   X,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
+import { apiCreateTeacherQuestion, apiUploadTeacherQuestionAudio } from "@/layers/data/api/resources.api";
 
 type SubQuestion = {
   id: number;
@@ -38,6 +40,7 @@ export default function ListeningQuestionForm() {
   // Audio state
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Sub-questions
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([
@@ -111,6 +114,51 @@ export default function ListeningQuestionForm() {
     if (newTag.trim() && !topicTags.includes(newTag.trim())) {
       setTopicTags((prev) => [...prev, newTag.trim()]);
       setNewTag("");
+    }
+  };
+
+  const handleSave = async () => {
+    if (subQuestions.some(q => !q.questionText)) {
+      alert("Please fill in all question texts.");
+      return;
+    }
+    if (subQuestions.some(q => q.correctAnswer === null)) {
+      alert("Please set a correct answer for all questions.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      for (const sq of subQuestions) {
+        const opts: Record<string, string> = {
+          "A": sq.options[0],
+          "B": sq.options[1],
+          "C": sq.options[2],
+          "D": sq.options[3]
+        };
+        // Option letters
+        const letter = ["A", "B", "C", "D"][sq.correctAnswer!];
+        opts["CorrectAnswer"] = letter;
+
+        const res = await apiCreateTeacherQuestion({
+          part: Number(partSelector),
+          type: "listening",
+          difficulty: difficulty,
+          text: sq.questionText,
+          options: opts,
+        });
+
+        // Upload audio for the first question to link it
+        if (audioFile && sq.id === subQuestions[0].id) {
+           await apiUploadTeacherQuestionAudio(res.questionId, audioFile);
+        }
+      }
+      alert("Questions created successfully!");
+      router.push("/teacher/questions");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -438,16 +486,11 @@ export default function ListeningQuestionForm() {
           </Button>
           <div className="flex gap-3">
             <Button
-              variant="outline"
-              className="rounded-xl font-bold h-11 px-6 border-slate-300 text-slate-700 hover:bg-slate-50 shadow-sm"
-            >
-              Save & Add Next
-            </Button>
-            <Button
-              onClick={() => router.push("/teacher/questions")}
+              onClick={handleSave}
+              disabled={isSaving}
               className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold h-11 px-6 shadow-sm gap-2"
             >
-              Save & Close ✓
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save & Close ✓"}
             </Button>
           </div>
         </div>

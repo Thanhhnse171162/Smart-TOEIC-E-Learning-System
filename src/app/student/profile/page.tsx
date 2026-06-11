@@ -96,16 +96,15 @@ function ApplyTeacherModal({ isOpen, onClose, onSubmit }: { isOpen: boolean; onC
     <>
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[480px] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-          <div className="flex items-start justify-between p-6 pb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[480px] max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
+          <div className="shrink-0 flex items-start justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-10">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Apply to be a Teacher</h2>
               <p className="text-sm text-slate-500 mt-1">Share your expertise and start teaching on SmartTOEIC.</p>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
           </div>
-          <div className="border-t border-slate-100 dark:border-slate-800" />
-          <div className="p-6 space-y-5">
+          <div className="p-6 space-y-5 overflow-y-auto">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Full Name <span className="text-red-500">*</span></label>
               <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Enter your full name" className={`rounded-xl h-12 border-slate-200 bg-slate-50 dark:bg-slate-800 focus:border-[#4b6cb7] font-medium ${errCls(!!fullName.trim())}`} />

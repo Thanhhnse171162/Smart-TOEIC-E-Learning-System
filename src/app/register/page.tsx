@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
@@ -25,37 +25,53 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const focusInput = (index: number) => {
+    inputRefs.current[index]?.focus();
+    inputRefs.current[index]?.select();
+  };
+
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, '').split('').slice(0, 6);
-      const newOtp = [...otp];
-      digits.forEach((digit, i) => {
-        if (index + i < 6) newOtp[index + i] = digit;
-      });
+    // Strip non-digits
+    const digits = value.replace(/\D/g, '');
+
+    // Paste / autocomplete: distribute from position 0
+    if (digits.length > 1) {
+      const newOtp = ["", "", "", "", "", ""];
+      digits.split('').slice(0, 6).forEach((d, i) => { newOtp[i] = d; });
       setOtp(newOtp);
-      const nextIndex = Math.min(index + digits.length, 5);
-      document.getElementById(`otp-${nextIndex}`)?.focus();
+      focusInput(Math.min(digits.length, 5));
       return;
     }
 
-    if (value && !/^\d$/.test(value)) return;
-
+    // Single digit typed
+    if (digits === '' && value !== '') return; // blocked non-digit
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = digits;
     setOtp(newOtp);
-
-    if (value && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
+    if (digits && index < 5) focusInput(index + 1);
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      document.getElementById(`otp-${index - 1}`)?.focus();
+    if (e.key === "Backspace") {
+      if (otp[index]) {
+        // Clear current cell
+        const newOtp = [...otp];
+        newOtp[index] = '';
+        setOtp(newOtp);
+      } else if (index > 0) {
+        // Move back and clear
+        const newOtp = [...otp];
+        newOtp[index - 1] = '';
+        setOtp(newOtp);
+        focusInput(index - 1);
+      }
+      e.preventDefault();
     } else if (e.key === "ArrowLeft" && index > 0) {
-      document.getElementById(`otp-${index - 1}`)?.focus();
+      focusInput(index - 1);
     } else if (e.key === "ArrowRight" && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
+      focusInput(index + 1);
     }
   };
 
@@ -102,11 +118,10 @@ export default function RegisterPage() {
       setLoading(true);
       try {
         if (USE_API) {
-          const { redirectTo } = await verifyEmailWithApi(email, otpCode, password);
-          router.push(redirectTo);
-          return;
+          await verifyEmailWithApi(email, otpCode, password);
         }
-        router.push(getDashboardPathByRole("Student"));
+        // Luôn redirect về login sau khi verify thành công
+        router.push("/login?registered=1");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Verification failed");
       } finally {
@@ -301,18 +316,27 @@ export default function RegisterPage() {
               
               <div className="flex justify-center gap-2.5 my-6">
                 {otp.map((digit, index) => (
-                  <Input
+                  <input
                     key={index}
+                    ref={(el) => { inputRefs.current[index] = el; }}
                     id={`otp-${index}`}
                     type="text"
                     inputMode="numeric"
-                    maxLength={6}
+                    maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(index, e)}
                     onFocus={(e) => e.target.select()}
-                    autoComplete="one-time-code"
-                    className="w-12 h-14 text-center text-2xl rounded-xl font-bold border-slate-200 focus:border-[#4b6cb7] focus:ring-[#4b6cb7] transition-all focus:scale-105"
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                      const newOtp = ["", "", "", "", "", ""];
+                      pasted.split('').forEach((d, i) => { newOtp[i] = d; });
+                      setOtp(newOtp);
+                      focusInput(Math.min(pasted.length, 5));
+                    }}
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
+                    className="w-12 h-14 text-center text-2xl rounded-xl font-bold border border-slate-200 focus:border-[#4b6cb7] focus:ring-2 focus:ring-[#4b6cb7] outline-none transition-all focus:scale-105 bg-white"
                   />
                 ))}
               </div>

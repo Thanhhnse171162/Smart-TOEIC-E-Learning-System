@@ -16,6 +16,7 @@ export const teacherSidebarItems = [
   { href: "/teacher/courses", label: "Courses", icon: "BookOpen" },
   { href: "/teacher/students", label: "Students", icon: "User" },
   { href: "/teacher/analytics", label: "Analytics", icon: "BarChart3" },
+  { href: "/teacher/settings", label: "Settings", icon: "Settings" },
 ];
 
 export const adminSidebarItems = [
