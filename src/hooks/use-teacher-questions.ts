@@ -1,106 +1,161 @@
-import { useState, useCallback, useEffect } from "react";
-import type { ApiTeacherQuestion } from "@/layers/data/api/types";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { USE_API } from "@/lib/api/config";
+import { ApiError } from "@/lib/api/client";
 import {
-  apiGetTeacherQuestions,
   apiGetTeacherQuestionById,
-  apiUpdateTeacherQuestion,
-  apiDeleteTeacherQuestion,
-  apiExportTeacherQuestions,
+  apiGetTeacherQuestions,
 } from "@/layers/data/api/resources.api";
+import type { ApiTeacherQuestion } from "@/layers/data/api/types";
 
-export type { ApiTeacherQuestion };
+export type QuestionDifficulty = "Easy" | "Medium" | "Hard";
 
-// Map API flat question → UI display shape
-export function mapApiQuestion(q: ApiTeacherQuestion) {
-  const optionValues = Object.values(q.options ?? {});
+export interface SubQuestion {
+  subId: string;
+  questionText: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface QuestionGroup {
+  id: string;
+  questionId: number;
+  isGroup: boolean;
+  part: number;
+  difficulty: QuestionDifficulty;
+  topic: string;
+  sharedContent: {
+    audioUrl: string | null;
+    passageText: string | null;
+  };
+  usage: string[];
+  text: string;
+  subQuestions: SubQuestion[];
+}
+
+function normalizeDifficulty(value: string): QuestionDifficulty {
+  const v = value.toLowerCase();
+  if (v === "easy") return "Easy";
+  if (v === "hard") return "Hard";
+  return "Medium";
+}
+
+function optionsFromApi(options: Record<string, string>) {
+  return ["A", "B", "C", "D"].map((key) => options[key] ?? "");
+}
+
+function passageFromExplanation(part: number, explanation?: string | null) {
+  if (part >= 6 && explanation?.trim()) return explanation;
+  return null;
+}
+
+export function mapTeacherQuestion(q: ApiTeacherQuestion): QuestionGroup {
+  const options = optionsFromApi(q.options);
   return {
-    id: String(q.questionId),
+    id: `Q${q.questionId}`,
     questionId: q.questionId,
+    isGroup: false,
     part: q.part,
-    difficulty: (q.difficulty ?? "Medium") as "Easy" | "Medium" | "Hard",
-    topic: q.type ?? "General",
-    text: q.text ?? "",
-    audioUrl: q.audioUrl ?? null,
-    imageUrl: q.imageUrl ?? null,
-    options: optionValues,
-    updatedDate: q.updatedDate,
+    difficulty: normalizeDifficulty(q.difficulty),
+    topic: q.type ? q.type.charAt(0).toUpperCase() + q.type.slice(1) : "Reading",
+    sharedContent: {
+      audioUrl: q.audioUrl ?? null,
+      passageText: passageFromExplanation(q.part, null),
+    },
+    usage: q.testId ? [`Test #${q.testId}`] : [],
+    text: q.text || `Part ${q.part} question`,
+    subQuestions: [
+      {
+        subId: `Q${q.questionId}`,
+        questionText: q.text,
+        options,
+        correctAnswer: "A",
+        explanation: "",
+      },
+    ],
   };
 }
 
-export type MappedQuestion = ReturnType<typeof mapApiQuestion>;
+export async function enrichQuestionDetail(group: QuestionGroup): Promise<QuestionGroup> {
+  try {
+    const detail = await apiGetTeacherQuestionById(group.questionId);
+    const options = optionsFromApi(detail.options);
+    const passage = passageFromExplanation(detail.part, detail.explanation);
+    return {
+      ...group,
+      difficulty: normalizeDifficulty(detail.difficulty),
+      sharedContent: {
+        audioUrl: detail.audioUrl ?? null,
+        passageText: passage,
+      },
+      subQuestions: [
+        {
+          subId: `Q${detail.questionId}`,
+          questionText: detail.text,
+          options,
+          correctAnswer: detail.correctAnswer,
+          explanation: passage ? "" : detail.explanation ?? "",
+        },
+      ],
+    };
+  } catch {
+    return group;
+  }
+}
 
-export function useTeacherQuestions(filters: {
-  part: string;
-  difficulty: string;
-  search: string;
-}) {
-  const [questions, setQuestions] = useState<MappedQuestion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export interface TeacherQuestionsFilters {
+  part?: string;
+  difficulty?: string;
+  search?: string;
+}
+
+export function useTeacherQuestions(filters: TeacherQuestionsFilters = {}) {
+  const [questions, setQuestions] = useState<QuestionGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fromApi, setFromApi] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuestions = useCallback(async () => {
-    setIsLoading(true);
+  const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
-    try {
-      const params: Parameters<typeof apiGetTeacherQuestions>[0] = {};
-      if (filters.part !== "all") params.part = Number(filters.part);
-      if (filters.difficulty !== "all") params.difficulty = filters.difficulty;
-      if (filters.search.trim()) params.search = filters.search.trim();
 
-      const data = await apiGetTeacherQuestions(params);
-      setQuestions(data.map(mapApiQuestion));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load questions");
+    if (!USE_API) {
+      setQuestions([]);
+      setFromApi(false);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await apiGetTeacherQuestions({
+        part: filters.part && filters.part !== "all" ? Number(filters.part) : undefined,
+        type: "reading",
+        difficulty:
+          filters.difficulty && filters.difficulty !== "all"
+            ? filters.difficulty.toLowerCase()
+            : undefined,
+        search: filters.search?.trim() || undefined,
+      });
+      setQuestions(data.filter((q) => q.part >= 5).map(mapTeacherQuestion));
+      setFromApi(true);
+    } catch (e) {
+      setQuestions([]);
+      setFromApi(false);
+      if (e instanceof ApiError && e.status === 401) {
+        setError("Unauthorized — please login as Teacher (teacher@toeic.com) to access Question Bank.");
+      } else {
+        setError(e instanceof Error ? e.message : "Failed to load questions");
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [filters.part, filters.difficulty, filters.search]);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions]);
+    load();
+  }, [load]);
 
-  // GET single question for Preview
-  const fetchQuestionDetail = useCallback(async (id: number) => {
-    return apiGetTeacherQuestionById(id);
-  }, []);
-
-  // PUT — Edit save
-  const updateQuestion = useCallback(
-    async (id: number, data: { difficulty?: string; topic?: string; text?: string; audioUrl?: string | null }) => {
-      await apiUpdateTeacherQuestion(id, {
-        difficulty: data.difficulty,
-        type: data.topic,
-        text: data.text,
-        audioUrl: data.audioUrl,
-      });
-      await fetchQuestions();
-    },
-    [fetchQuestions]
-  );
-
-  // DELETE
-  const deleteQuestion = useCallback(
-    async (id: number) => {
-      await apiDeleteTeacherQuestion(id);
-      setQuestions((prev) => prev.filter((q) => q.questionId !== id));
-    },
-    []
-  );
-
-  // Export
-  const exportQuestions = useCallback(async (part?: number) => {
-    await apiExportTeacherQuestions(part !== undefined ? { part } : undefined);
-  }, []);
-
-  return {
-    questions,
-    isLoading,
-    error,
-    refetch: fetchQuestions,
-    fetchQuestionDetail,
-    updateQuestion,
-    deleteQuestion,
-    exportQuestions,
-  };
+  return { questions, setQuestions, loading, fromApi, error, refetch: load };
 }

@@ -63,24 +63,10 @@ export interface ApiQuestion {
   questionOrder: number;
 }
 
-// Teacher Question Bank — matches actual backend response
 export interface ApiTeacherQuestion {
   questionId: number;
-  testId: number;
-  createdByUserId: number;
-  part: number;
-  type: string;           // "listening" | "reading"
-  difficulty: string;     // "Easy" | "Medium" | "Hard"
-  text: string;
-  options: Record<string, string>; // { additionalProp1: "A text", ... }
-  audioUrl?: string | null;
-  imageUrl?: string | null;
-  questionOrder: number;
-  createdDate: string;
-  updatedDate: string;
-}
-
-export interface ApiTeacherQuestionCreatePayload {
+  testId?: number | null;
+  createdByUserId?: number | null;
   part: number;
   type: string;
   difficulty: string;
@@ -88,17 +74,14 @@ export interface ApiTeacherQuestionCreatePayload {
   options: Record<string, string>;
   audioUrl?: string | null;
   imageUrl?: string | null;
-  questionOrder?: number;
+  questionOrder: number;
+  createdDate: string;
+  updatedDate?: string | null;
 }
 
-export interface ApiTeacherQuestionUpdatePayload {
-  part?: number;
-  type?: string;
-  difficulty?: string;
-  text?: string;
-  options?: Record<string, string>;
-  audioUrl?: string | null;
-  imageUrl?: string | null;
+export interface ApiTeacherQuestionDetail extends ApiTeacherQuestion {
+  correctAnswer: string;
+  explanation?: string | null;
 }
 
 export interface ApiTOEICTest {
