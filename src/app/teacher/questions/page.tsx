@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
-import { Search, Plus, Camera, MessageCircle, Users, Mic, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, PlayCircle, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Camera, MessageCircle, Users, Mic, PenLine, FileText, BookOpen, ChevronRight, ChevronDown, Eye, Edit2, Trash2, X, PlayCircle, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  apiGetTeacherQuestions,
+  apiGetTeacherQuestionById,
+  apiUpdateTeacherQuestion,
+  apiDeleteTeacherQuestion,
+  apiExportTeacherQuestions,
+} from "@/layers/data/api/resources.api";
+import { ApiError } from "@/lib/api/client";
+import type { ApiTeacherQuestion } from "@/layers/data/api/types";
 
-// --- Types ---
+// --- UI Types ---
 type SubQuestion = {
   subId: string;
   questionText: string;
@@ -22,6 +31,7 @@ type SubQuestion = {
 
 type QuestionGroup = {
   id: string;
+  questionId: number;
   isGroup: boolean;
   part: number;
   difficulty: "Easy" | "Medium" | "Hard";
@@ -35,8 +45,32 @@ type QuestionGroup = {
   subQuestions: SubQuestion[];
 };
 
-// --- Mock Data ---
-const MOCK_QUESTIONS: QuestionGroup[] = [
+// Map flat API question → UI QuestionGroup
+function mapApiToGroup(q: ApiTeacherQuestion): QuestionGroup {
+  const optVals = Object.values(q.options ?? {});
+  return {
+    id: String(q.questionId),
+    questionId: q.questionId,
+    isGroup: false,
+    part: q.part,
+    difficulty: (q.difficulty as "Easy" | "Medium" | "Hard") ?? "Medium",
+    topic: q.type ?? "General",
+    sharedContent: { audioUrl: q.audioUrl ?? null, passageText: null },
+    usage: [],
+    text: q.text ?? "",
+    subQuestions: [
+      {
+        subId: String(q.questionId),
+        questionText: q.text ?? "",
+        options: optVals,
+        correctAnswer: "A",
+        explanation: "",
+      },
+    ],
+  };
+}
+
+const FALLBACK: QuestionGroup[] = [
   {
     id: "Q1001",
     isGroup: true,
@@ -126,10 +160,12 @@ const MOCK_QUESTIONS: QuestionGroup[] = [
 
 export default function TeacherQuestionsPage() {
   const router = useRouter();
-  const [questions, setQuestions] = useState<QuestionGroup[]>(MOCK_QUESTIONS);
+  const [questions, setQuestions] = useState<QuestionGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -147,9 +183,38 @@ export default function TeacherQuestionsPage() {
   // Edit state
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editData, setEditData] = useState<QuestionGroup | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   // Dialog state
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, parentId: string, subId: string} | null>(null);
+
+  // ── Fetch list from API ──────────────────────────────────────
+  const fetchQuestions = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const params: Parameters<typeof apiGetTeacherQuestions>[0] = {};
+      if (filterPart !== "all") params.part = Number(filterPart);
+      if (filterDifficulty !== "all") params.difficulty = filterDifficulty;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      const data = await apiGetTeacherQuestions(params);
+      setQuestions(data.map(mapApiToGroup));
+    } catch (e: unknown) {
+      // 401: dùng FALLBACK, các lỗi khác hiển thị error
+      const isUnauthorized = e instanceof ApiError && e.status === 401;
+      if (isUnauthorized) {
+        setQuestions(FALLBACK);
+        setApiError("401");
+      } else {
+        setApiError(e instanceof Error ? e.message : "Failed to load questions");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filterPart, filterDifficulty, searchTerm]);
+
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
   // Toggle Accordion
   const toggleExpand = useCallback((id: string) => {
@@ -217,18 +282,52 @@ export default function TeacherQuestionsPage() {
 
   // Edit Drawer
   const openEdit = (group: QuestionGroup) => {
-    setEditData(JSON.parse(JSON.stringify(group))); // deep clone
+    setEditData(JSON.parse(JSON.stringify(group)));
     setIsEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  // PUT /api/teacher/questions/{id}
+  const handleSaveEdit = async () => {
     if (!editData) return;
-    setQuestions(prev => prev.map(q => q.id === editData.id ? editData : q));
-    setIsEditOpen(false);
+    setIsSaving(true);
+    try {
+      await apiUpdateTeacherQuestion(editData.questionId, {
+        difficulty: editData.difficulty,
+        type: editData.topic,
+        text: editData.text,
+        audioUrl: editData.sharedContent.audioUrl,
+      });
+      setQuestions(prev => prev.map(q => q.id === editData.id ? editData : q));
+      setIsEditOpen(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleActionClick = (action: string) => {
-    alert(`${action} feature is coming soon!`);
+  // DELETE /api/teacher/questions/{id}
+  const handleDelete = async (group: QuestionGroup) => {
+    if (!confirm(`Delete question #${group.id}?`)) return;
+    setIsDeleting(group.id);
+    try {
+      await apiDeleteTeacherQuestion(group.questionId);
+      setQuestions(prev => prev.filter(q => q.id !== group.id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  // GET /api/teacher/questions/export
+  const handleExport = async () => {
+    try {
+      const part = filterPart !== "all" ? Number(filterPart) : undefined;
+      await apiExportTeacherQuestions(part !== undefined ? { part } : undefined);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Export failed");
+    }
   };
 
   const filteredQuestions = questions.filter(q => {
@@ -343,7 +442,7 @@ export default function TeacherQuestionsPage() {
           </div>
 
           <div className="flex items-center gap-3 ml-auto pl-4 shrink-0">
-            <Button variant="outline" onClick={() => handleActionClick('Export')} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
+            <Button variant="outline" onClick={handleExport} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
             <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
           </div>
         </div>
@@ -408,6 +507,34 @@ export default function TeacherQuestionsPage() {
             <Switch checked={unusedOnly} onCheckedChange={(v) => { setUnusedOnly(v); setCurrentPage(1); }} />
           </div>
         </div>
+
+        {/* Loading / Error states */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20 gap-3 text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="font-semibold">Loading questions...</span>
+          </div>
+        )}
+        {!isLoading && apiError && apiError === "401" && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 text-amber-700">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <div>
+              <p className="font-bold">Chưa đăng nhập</p>
+              <p className="text-sm font-medium">Đang hiển thị dữ liệu demo. Đăng nhập để xem câu hỏi thực tế.</p>
+            </div>
+            <Button size="sm" onClick={() => router.push('/login')} className="ml-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl">
+              Đăng nhập
+            </Button>
+          </div>
+        )}
+        {!isLoading && apiError && apiError !== "401" && (
+          <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl p-5 mb-6 text-rose-700">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="font-semibold">{apiError}</span>
+            <Button size="sm" variant="outline" onClick={fetchQuestions} className="ml-auto">Retry</Button>
+          </div>
+        )}
+
 
         {/* Data Table */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -499,7 +626,15 @@ export default function TeacherQuestionsPage() {
                     <div className="col-span-1 flex items-center justify-end gap-2 pr-2 text-slate-400">
                       <button onClick={() => openPreview(group)} className="hover:text-indigo-600 transition-colors p-1"><Eye className="w-4 h-4 stroke-[2.5]" /></button>
                       <button onClick={() => openEdit(group)} className="hover:text-amber-600 transition-colors p-1"><Edit2 className="w-4 h-4 stroke-[2.5]" /></button>
-                      <button onClick={() => handleActionClick('Delete Question')} className="hover:text-rose-600 transition-colors p-1"><Trash2 className="w-4 h-4 stroke-[2.5]" /></button>
+                      <button
+                        onClick={() => handleDelete(group)}
+                        disabled={isDeleting === group.id}
+                        className="hover:text-rose-600 transition-colors p-1 disabled:opacity-50"
+                      >
+                        {isDeleting === group.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Trash2 className="w-4 h-4 stroke-[2.5]" />}
+                      </button>
                     </div>
                   </div>
 
@@ -684,7 +819,9 @@ export default function TeacherQuestionsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-                <Button onClick={handleSaveEdit} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold">Save Changes</Button>
+                <Button onClick={handleSaveEdit} disabled={isSaving} className="rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold">
+                  {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />Saving...</> : "Save Changes"}
+                </Button>
               </div>
             </div>
             
