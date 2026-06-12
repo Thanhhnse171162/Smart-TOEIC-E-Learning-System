@@ -52,6 +52,9 @@ export default function TeacherCoursesPage() {
   const totalPages = Math.max(1, Math.ceil(allCourses.length / itemsPerPage));
   const courses = allCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const publishedCount = allCourses.filter(c => c.status === "Published").length;
+  const draftsCount = allCourses.length - publishedCount;
+
   return (
     <DashboardLayout 
       sidebarItems={teacherSidebarItems} 
@@ -78,7 +81,7 @@ export default function TeacherCoursesPage() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Students</p>
-              <p className="text-2xl font-black text-slate-800">2,410</p>
+              <p className="text-2xl font-black text-slate-800">0</p>
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -87,7 +90,7 @@ export default function TeacherCoursesPage() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg. Rating</p>
-              <p className="text-2xl font-black text-slate-800">4.8</p>
+              <p className="text-2xl font-black text-slate-800">0.0</p>
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -96,7 +99,7 @@ export default function TeacherCoursesPage() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completion Rate</p>
-              <p className="text-2xl font-black text-slate-800">76%</p>
+              <p className="text-2xl font-black text-slate-800">0%</p>
             </div>
           </div>
         </div>
@@ -104,9 +107,9 @@ export default function TeacherCoursesPage() {
         {/* Toolbar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-white border-slate-200 text-slate-800 font-bold rounded-xl shadow-sm h-9 px-4">All Courses</Button>
-            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Published (3)</Button>
-            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Drafts (1)</Button>
+            <Button variant="outline" className="bg-white border-slate-200 text-slate-800 font-bold rounded-xl shadow-sm h-9 px-4">All Courses ({allCourses.length})</Button>
+            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Published ({publishedCount})</Button>
+            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Drafts ({draftsCount})</Button>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/teacher/courses/create">
