@@ -199,3 +199,21 @@ export async function apiExportTeacherQuestions(params?: { part?: number }) {
   window.URL.revokeObjectURL(url);
 }
 
+/** POST /api/teacher/questions/import — Import questions from file */
+export async function apiImportTeacherQuestions(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const token = typeof window !== "undefined" ? (localStorage.getItem("toeic_access_token") ?? "") : "";
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+  const res = await fetch(`${baseUrl}/api/teacher/questions/import`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? res.statusText);
+  }
+  return res.json() as Promise<{ imported: number, message?: string }>;
+}

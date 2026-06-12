@@ -23,6 +23,7 @@ import {
   ScanLine,
   AlertCircle,
 } from "lucide-react";
+import { apiCreateTeacherQuestion } from "@/layers/data/api/resources.api";
 
 type SubQuestion = {
   id: number;
@@ -60,6 +61,7 @@ export default function ReadingQuestionForm() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // AI Generate handlers
   const toggleAiTopic = (topic: string) => {
@@ -159,6 +161,50 @@ export default function ReadingQuestionForm() {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const handleSave = async () => {
+    if (subQuestions.some(q => !q.questionText)) {
+      alert("Please fill in all question texts.");
+      return;
+    }
+    if (subQuestions.some(q => q.correctAnswer === null)) {
+      alert("Please set a correct answer for all questions.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      for (const sq of subQuestions) {
+        const opts: Record<string, string> = {
+          "A": sq.options[0],
+          "B": sq.options[1],
+          "C": sq.options[2],
+          "D": sq.options[3]
+        };
+        const letter = ["A", "B", "C", "D"][sq.correctAnswer!];
+        opts["CorrectAnswer"] = letter;
+
+        // Note: For reading comprehension, the shared passage text could be sent if the API supported it.
+        // Currently, we attach the passage text to the question text, or just send the question text.
+        // For simplicity, we prepend the passage if it's the first question, or just use question text.
+        const combinedText = passageText ? `[Passage]:\n${passageText}\n\n[Question]:\n${sq.questionText}` : sq.questionText;
+
+        await apiCreateTeacherQuestion({
+          part: Number(partSelector),
+          type: "reading",
+          difficulty: difficulty,
+          text: combinedText,
+          options: opts,
+        });
+      }
+      alert("Questions created successfully!");
+      router.push("/teacher/questions");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Sub-questions
@@ -538,16 +584,11 @@ CEO, Tech Solutions`;
           </Button>
           <div className="flex gap-3">
             <Button
-              variant="outline"
-              className="rounded-xl font-bold h-11 px-6 border-slate-300 text-slate-700 bg-slate-100 hover:bg-slate-200 shadow-sm"
-            >
-              Save & Add Next
-            </Button>
-            <Button
-              onClick={() => router.push("/teacher/questions")}
+              onClick={handleSave}
+              disabled={isSaving}
               className="rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold h-11 px-6 shadow-sm gap-2"
             >
-              Save & Close
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save & Close"}
             </Button>
           </div>
         </div>

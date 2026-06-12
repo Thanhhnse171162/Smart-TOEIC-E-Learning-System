@@ -16,9 +16,11 @@ import {
   apiUpdateTeacherQuestion,
   apiDeleteTeacherQuestion,
   apiExportTeacherQuestions,
+  apiImportTeacherQuestions,
 } from "@/layers/data/api/resources.api";
 import { ApiError } from "@/lib/api/client";
 import type { ApiTeacherQuestion } from "@/layers/data/api/types";
+import { clearSession } from "@/lib/auth/session";
 
 // --- UI Types ---
 type SubQuestion = {
@@ -70,93 +72,7 @@ function mapApiToGroup(q: ApiTeacherQuestion): QuestionGroup {
   };
 }
 
-const FALLBACK: QuestionGroup[] = [
-  {
-    id: "Q1001",
-    isGroup: true,
-    part: 1,
-    difficulty: "Easy",
-    topic: "Grammar",
-    sharedContent: { audioUrl: "/audio/sample.mp3", passageText: null },
-    usage: ["Weekly #12", "Full #3"],
-    text: "Part 1 | The woman is holding a...",
-    subQuestions: [
-      { subId: "Q1001.1", questionText: "What is the woman holding?", options: ["A book", "A pen", "A cup", "A bag"], correctAnswer: "A", explanation: "The woman clearly holds a book." },
-      { subId: "Q1001.2", questionText: "Where is the woman standing?", options: ["By the window", "Near the door", "In the garden", "At the desk"], correctAnswer: "D", explanation: "She is at the desk." }
-    ]
-  },
-  {
-    id: "Q1002",
-    isGroup: true,
-    part: 2,
-    difficulty: "Medium",
-    topic: "Vocabulary",
-    sharedContent: { audioUrl: "/audio/sample2.mp3", passageText: null },
-    usage: ["Full #3"],
-    text: "Part 2 | Where is the nearest post office?",
-    subQuestions: [
-      { subId: "Q1002.1", questionText: "Where is the post office?", options: ["Next to bank", "Down street", "I don't know", "It is closed"], correctAnswer: "B", explanation: "The speaker says down the street." },
-      { subId: "Q1002.2", questionText: "What time does it close?", options: ["5 PM", "6 PM", "7 PM", "8 PM"], correctAnswer: "A", explanation: "Closes at 5 PM." }
-    ]
-  },
-  {
-    id: "Q1003",
-    isGroup: true,
-    part: 3,
-    difficulty: "Hard",
-    topic: "Business",
-    sharedContent: { audioUrl: "/audio/sample3.mp3", passageText: null },
-    usage: ["Weekly #12", "Full #3"],
-    text: "Part 3 | What are the speakers discussing?",
-    subQuestions: [
-      { subId: "Q1003.1", questionText: "What does the woman ask for?", options: ["A refund", "A different size", "A manager", "Store credit"], correctAnswer: "C", explanation: "The woman clearly states she wants a manager." },
-      { subId: "Q1003.2", questionText: "What does the man suggest?", options: ["Option A", "Option B", "Option C", "Option D"], correctAnswer: "A", explanation: "The man proposes Option A." }
-    ]
-  },
-  {
-    id: "Q1004",
-    isGroup: true,
-    part: 4,
-    difficulty: "Medium",
-    topic: "Announcement",
-    sharedContent: { audioUrl: "/audio/sample4.mp3", passageText: null },
-    usage: ["Full #3"],
-    text: "Part 4 | According to the speaker, what will happen...",
-    subQuestions: [
-      { subId: "Q1004.1", questionText: "What will happen?", options: ["Delay", "Cancel", "Proceed", "Move"], correctAnswer: "C", explanation: "It will proceed." },
-      { subId: "Q1004.2", questionText: "Who should the listeners contact?", options: ["Manager", "Support", "HR", "No one"], correctAnswer: "B", explanation: "Contact support for help." },
-      { subId: "Q1004.3", questionText: "When is the new date?", options: ["Monday", "Friday", "Next Week", "Unknown"], correctAnswer: "A", explanation: "Rescheduled to Monday." }
-    ]
-  },
-  {
-    id: "Q1005",
-    isGroup: true,
-    part: 5,
-    difficulty: "Easy",
-    topic: "Grammar",
-    sharedContent: { audioUrl: null, passageText: null },
-    usage: [],
-    text: "Part 5 | The new policy ___ effect next month.",
-    subQuestions: [
-      { subId: "Q1005.1", questionText: "The new policy ___ effect next month.", options: ["takes", "taking", "took", "take"], correctAnswer: "A", explanation: "Takes effect is correct." }
-    ]
-  },
-  {
-    id: "Q1006",
-    isGroup: true,
-    part: 6,
-    difficulty: "Hard",
-    topic: "Email",
-    sharedContent: { audioUrl: null, passageText: "Dear Mr. Kim,\n\nI am writing to inquire about the latest software update. We noticed several bugs in the reporting module. Please fix them by Friday.\n\nBest,\nSarah" },
-    usage: [],
-    text: "Part 6 | Dear Mr. Kim, I am writing to...",
-    subQuestions: [
-      { subId: "Q1006.1", questionText: "What is the purpose of the email?", options: ["Complaint", "Inquiry", "Application", "Invitation"], correctAnswer: "B", explanation: "Inquiry about product." },
-      { subId: "Q1006.2", questionText: "When is the deadline?", options: ["Monday", "Tuesday", "Wednesday", "Friday"], correctAnswer: "D", explanation: "Friday is stated." },
-      { subId: "Q1006.3", questionText: "Who should be contacted?", options: ["HR", "IT", "Sales", "Manager"], correctAnswer: "A", explanation: "Contact HR." }
-    ]
-  }
-];
+// FALLBACK removed
 
 export default function TeacherQuestionsPage() {
   const router = useRouter();
@@ -165,6 +81,8 @@ export default function TeacherQuestionsPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -201,11 +119,10 @@ export default function TeacherQuestionsPage() {
       const data = await apiGetTeacherQuestions(params);
       setQuestions(data.map(mapApiToGroup));
     } catch (e: unknown) {
-      // 401: dùng FALLBACK, các lỗi khác hiển thị error
       const isUnauthorized = e instanceof ApiError && e.status === 401;
       if (isUnauthorized) {
-        setQuestions(FALLBACK);
-        setApiError("401");
+        clearSession();
+        router.push("/login");
       } else {
         setApiError(e instanceof Error ? e.message : "Failed to load questions");
       }
@@ -330,6 +247,23 @@ export default function TeacherQuestionsPage() {
     }
   };
 
+  // POST /api/teacher/questions/import
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      await apiImportTeacherQuestions(file);
+      alert("Import successfully!");
+      fetchQuestions(); // reload
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const filteredQuestions = questions.filter(q => {
     if (filterPart !== "all" && q.part.toString() !== filterPart) return false;
     if (filterDifficulty !== "all" && q.difficulty !== filterDifficulty) return false;
@@ -347,11 +281,18 @@ export default function TeacherQuestionsPage() {
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / itemsPerPage));
   const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const totalQuestions = questions.length;
+  const listeningQs = questions.filter(q => q.part >= 1 && q.part <= 4).length;
+  const readingQs = questions.filter(q => q.part >= 5 && q.part <= 7).length;
+  const usedQs = questions.filter(q => q.usage && q.usage.length > 0).length;
+  const unusedQs = questions.filter(q => !q.usage || q.usage.length === 0).length;
+  const getPartCount = (part: number) => questions.filter(q => q.part === part).length;
+
   return (
     <DashboardLayout 
       sidebarItems={teacherSidebarItems} 
       title="Question Bank" 
-      subtitle="1,250 questions • Parts 1-7" 
+      subtitle={`${totalQuestions} questions • Parts 1-7`} 
       
     >
       <div className="max-w-[1400px] mx-auto pb-10">
@@ -359,23 +300,23 @@ export default function TeacherQuestionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Questions</p>
-            <p className="text-2xl font-black text-slate-800">1,250</p>
+            <p className="text-2xl font-black text-slate-800">{totalQuestions}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Listening (Parts 1-4)</p>
-            <p className="text-2xl font-black text-[#4f46e5]">600</p>
+            <p className="text-2xl font-black text-[#4f46e5]">{listeningQs}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Reading (Parts 5-7)</p>
-            <p className="text-2xl font-black text-emerald-600">650</p>
+            <p className="text-2xl font-black text-emerald-600">{readingQs}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Used Questions</p>
-            <p className="text-2xl font-black text-teal-600">850</p>
+            <p className="text-2xl font-black text-teal-600">{usedQs}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unused Questions</p>
-            <p className="text-2xl font-black text-amber-500">400</p>
+            <p className="text-2xl font-black text-amber-500">{unusedQs}</p>
           </div>
         </div>
 
@@ -394,10 +335,10 @@ export default function TeacherQuestionsPage() {
               <span className="text-[11px] font-black uppercase tracking-wider">Listening</span>
             </div>
             {[
-              { part: 1, qs: 150 },
-              { part: 2, qs: 150 },
-              { part: 3, qs: 150 },
-              { part: 4, qs: 150 },
+              { part: 1, qs: getPartCount(1) },
+              { part: 2, qs: getPartCount(2) },
+              { part: 3, qs: getPartCount(3) },
+              { part: 4, qs: getPartCount(4) },
             ].map((p) => {
               const isActive = filterPart === p.part.toString();
               return (
@@ -421,9 +362,9 @@ export default function TeacherQuestionsPage() {
               <span className="text-[11px] font-black uppercase tracking-wider">Reading</span>
             </div>
             {[
-              { part: 5, qs: 200 },
-              { part: 6, qs: 200 },
-              { part: 7, qs: 250 },
+              { part: 5, qs: getPartCount(5) },
+              { part: 6, qs: getPartCount(6) },
+              { part: 7, qs: getPartCount(7) },
             ].map((p) => {
               const isActive = filterPart === p.part.toString();
               return (
@@ -442,6 +383,17 @@ export default function TeacherQuestionsPage() {
           </div>
 
           <div className="flex items-center gap-3 ml-auto pl-4 shrink-0">
+            <input 
+              type="file" 
+              accept=".xlsx,.xls,.csv" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleImport} 
+            />
+            <Button variant="outline" disabled={isImporting} onClick={() => fileInputRef.current?.click()} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">
+              {isImporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Import
+            </Button>
             <Button variant="outline" onClick={handleExport} className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-9 px-4 shadow-sm hover:bg-slate-50 transition-colors text-sm">Export</Button>
             <Button onClick={() => router.push('/teacher/questions/add')} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl gap-2 h-9 px-4 shadow-sm transition-colors text-sm"><Plus className="w-4 h-4 stroke-[3]"/> Add Question</Button>
           </div>
@@ -513,18 +465,6 @@ export default function TeacherQuestionsPage() {
           <div className="flex items-center justify-center py-20 gap-3 text-slate-500">
             <Loader2 className="w-6 h-6 animate-spin" />
             <span className="font-semibold">Loading questions...</span>
-          </div>
-        )}
-        {!isLoading && apiError && apiError === "401" && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 text-amber-700">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div>
-              <p className="font-bold">Chưa đăng nhập</p>
-              <p className="text-sm font-medium">Đang hiển thị dữ liệu demo. Đăng nhập để xem câu hỏi thực tế.</p>
-            </div>
-            <Button size="sm" onClick={() => router.push('/login')} className="ml-auto bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl">
-              Đăng nhập
-            </Button>
           </div>
         )}
         {!isLoading && apiError && apiError !== "401" && (
