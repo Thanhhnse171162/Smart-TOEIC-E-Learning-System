@@ -17,27 +17,6 @@ const allCourses = [
   { id: "c6", title: "Speaking & Writing Basics", students: 120, rating: 4.2, status: "Draft", lessons: 8, hours: 4, level: "B2", gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)", progress: 40 },
 ];
 
-function StarRating({ rating }: { rating: number }) {
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    if (i <= Math.floor(rating)) {
-      stars.push(<Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />);
-    } else if (i === Math.ceil(rating) && rating % 1 !== 0) {
-      stars.push(
-        <div key={i} className="relative w-3.5 h-3.5">
-          <Star className="w-3.5 h-3.5 text-slate-200 absolute" />
-          <div className="overflow-hidden absolute" style={{ width: `${(rating % 1) * 100}%` }}>
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          </div>
-        </div>
-      );
-    } else {
-      stars.push(<Star key={i} className="w-3.5 h-3.5 text-slate-200" />);
-    }
-  }
-  return <div className="flex items-center gap-0.5">{stars}</div>;
-}
-
 export default function TeacherCoursesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
@@ -101,9 +80,11 @@ export default function TeacherCoursesPage() {
             <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Drafts (1)</Button>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-9 px-5 shadow-sm transition-colors gap-2 text-[13px]">
-              <Plus className="w-4 h-4 stroke-[3]"/> Create New Course
-            </Button>
+            <Link href="/teacher/courses/create">
+              <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-9 px-5 shadow-sm transition-colors gap-2 text-[13px]">
+                <Plus className="w-4 h-4 stroke-[3]"/> Create New Course
+              </Button>
+            </Link>
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 border-none"><LayoutGrid className="w-4 h-4" /></Button>
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-400"><BookOpen className="w-4 h-4" /></Button>
@@ -162,17 +143,6 @@ export default function TeacherCoursesPage() {
                   </h3>
                 </Link>
 
-                {/* Star Rating */}
-                <div className="flex items-center gap-2 mb-4">
-                  {course.rating > 0 ? (
-                    <>
-                      <StarRating rating={course.rating} />
-                      <span className="text-sm font-semibold text-slate-500">({course.rating})</span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-slate-400 italic">No ratings yet</span>
-                  )}
-                </div>
 
                 {/* Draft - Curriculum Progress */}
                 {course.status === "Draft" && (
