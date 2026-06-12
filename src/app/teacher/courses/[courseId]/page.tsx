@@ -1,107 +1,153 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { clearSession } from "@/lib/auth/session";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import { getStoredUser } from "@/lib/auth/session";
 import {
   ArrowLeft, Plus, PlayCircle, FileText, CheckCircle2,
-  MoreVertical, Users, Settings, BookOpen, GripVertical, HelpCircle, X, Video, FileCheck2
+  MoreVertical, Users, Settings, BookOpen, GripVertical, HelpCircle, X, Video, FileCheck2, Loader2, AlertCircle, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// Mock data
-const MOCK_COURSE = {
-  id: "c1",
-  title: "TOEIC Listening Mastery (Part 1-4)",
-  status: "Published",
-  students: 1250,
-  modules: [
-    {
-      id: "m1",
-      title: "Module 1: Part 1 - Photographs",
-      lessons: [
-        { id: "l1", title: "Introduction to Part 1", type: "Video", duration: "15:00" },
-        { id: "l2", title: "Common Vocabulary & Traps", type: "Document", duration: "10 mins read" },
-        { id: "l3", title: "Practice Mini-Test 1", type: "Quiz", duration: "20 Qs" },
-      ]
-    },
-    {
-      id: "m2",
-      title: "Module 2: Part 2 - Question & Response",
-      lessons: [
-        { id: "l4", title: "Identifying Question Types (WH- Questions)", type: "Video", duration: "25:00" },
-        { id: "l5", title: "Distractor Analysis", type: "Video", duration: "18:00" },
-        { id: "l6", title: "Practice Mini-Test 2", type: "Quiz", duration: "30 Qs" },
-      ]
-    }
-  ]
-};
+import { 
+  apiGetTeacherCourseById, 
+  apiGetCourseLessons, 
+  apiCreateCourseLesson, 
+  apiDeleteCourseLesson, 
+  ApiTeacherCourse, 
+  ApiCourseLesson 
+} from "@/lib/teacher-courses-api";
 
 export default function ManageCoursePage({ params }: { params: Promise<{ courseId: string }> }) {
+  const router = useRouter();
   const { courseId } = use(params);
   const [activeTab, setActiveTab] = useState("curriculum");
-  const [course, setCourse] = useState(MOCK_COURSE);
+  
+  const [course, setCourse] = useState<ApiTeacherCourse | null>(null);
+  const [lessons, setLessons] = useState<ApiCourseLesson[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const me = getStoredUser();
 
   // Modals state
-  const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
-  const [newModuleTitle, setNewModuleTitle] = useState("");
-
   const [isSelectLessonTypeOpen, setIsSelectLessonTypeOpen] = useState(false);
-  const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
-  
   const [lessonFormType, setLessonFormType] = useState<"Video" | "Document" | "Quiz" | null>(null);
-  const [newLessonData, setNewLessonData] = useState({ title: "", duration: "" });
+  const [newLessonData, setNewLessonData] = useState({ title: "", duration: "", videoUrl: "" });
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Add Module handler
-  const handleAddModule = () => {
-    if (!newModuleTitle.trim()) return;
-    const newModule = {
-      id: "m" + Date.now(),
-      title: newModuleTitle,
-      lessons: []
-    };
-    setCourse({ ...course, modules: [...course.modules, newModule] });
-    setNewModuleTitle("");
-    setIsAddModuleOpen(false);
-  };
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [courseData, lessonsData] = await Promise.all([
+          apiGetTeacherCourseById(courseId),
+          apiGetCourseLessons(courseId)
+        ]);
+        setCourse(courseData);
+        setLessons(lessonsData);
+      } catch (err: any) {
+        if (err.message === "Unauthorized" || err.message.includes("401")) {
+          clearSession();
+          router.push("/login");
+          return;
+        }
+        setError(err.message || "Failed to load course details");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [courseId, router]);
 
   // Add Lesson Handlers
-  const handleOpenAddLesson = (moduleId: string) => {
-    setTargetModuleId(moduleId);
+  const handleOpenAddLesson = () => {
     setIsSelectLessonTypeOpen(true);
   };
 
   const handleSelectLessonType = (type: "Video" | "Document" | "Quiz") => {
     setIsSelectLessonTypeOpen(false);
     setLessonFormType(type);
-    setNewLessonData({ title: "", duration: "" });
+    setNewLessonData({ title: "", duration: "", videoUrl: "" });
+    setUploadedFiles([]);
   };
 
-  const handleAddLessonSubmit = () => {
-    if (!newLessonData.title.trim() || !targetModuleId || !lessonFormType) return;
-    
-    const newLesson = {
-      id: "l" + Date.now(),
-      title: newLessonData.title,
-      type: lessonFormType,
-      duration: newLessonData.duration || (lessonFormType === "Video" ? "10:00" : lessonFormType === "Quiz" ? "20 Qs" : "5 mins read")
-    };
-
-    setCourse({
-      ...course,
-      modules: course.modules.map(m => 
-        m.id === targetModuleId ? { ...m, lessons: [...m.lessons, newLesson] } : m
-      )
-    });
-    setLessonFormType(null);
-    setTargetModuleId(null);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setUploadedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
   };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddLessonSubmit = async () => {
+    if (!newLessonData.title.trim() || !lessonFormType) return;
+    setIsSubmitting(true);
+    try {
+      const descriptionText = newLessonData.duration 
+        ? `${lessonFormType} - ${newLessonData.duration}`
+        : `${lessonFormType} Lesson`;
+        
+      const newLesson = await apiCreateCourseLesson(courseId, {
+        title: newLessonData.title,
+        description: descriptionText,
+        videoUrl: newLessonData.videoUrl || undefined
+      });
+      setLessons([...lessons, newLesson]);
+      setLessonFormType(null);
+      setUploadedFiles([]);
+    } catch (err: any) {
+      if (err.message === "Unauthorized" || err.message.includes("401")) {
+        clearSession();
+        router.push("/login");
+        return;
+      }
+      alert("Failed to add lesson: " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: number) => {
+    if (!confirm("Are you sure you want to delete this lesson?")) return;
+    try {
+      await apiDeleteCourseLesson(courseId, lessonId);
+      setLessons(lessons.filter(l => l.lessonId !== lessonId));
+    } catch (err: any) {
+       if (err.message === "Unauthorized" || err.message.includes("401")) {
+        clearSession();
+        router.push("/login");
+        return;
+      }
+      alert("Failed to delete lesson: " + err.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout sidebarItems={teacherSidebarItems} title="Manage Course" sidebarTitle="Teacher">
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <DashboardLayout sidebarItems={teacherSidebarItems} title="Manage Course" sidebarTitle="Teacher">
+        <div className="flex justify-center py-20 text-rose-500 font-bold bg-rose-50 border border-rose-200 m-6 rounded-xl p-6">
+          <AlertCircle className="w-5 h-5 mr-2" /> {error || "Course not found"}
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -122,14 +168,13 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-xl font-extrabold text-slate-900">{course.title}</h1>
-                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold px-2 py-0.5 rounded-md shadow-none">{course.status}</Badge>
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold px-2 py-0.5 rounded-md shadow-none">{course.status || "Draft"}</Badge>
               </div>
-              <p className="text-sm font-bold text-slate-500">ID: {courseId} • {course.students} enrolled students</p>
+              <p className="text-sm font-bold text-slate-500">ID: {courseId} • Level: {course.level}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="font-bold rounded-xl h-10 px-6 border-slate-200 shadow-sm text-slate-700">Preview Course</Button>
-            <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">Save Changes</Button>
+            <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">Publish Course</Button>
           </div>
         </div>
 
@@ -155,60 +200,55 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-slate-800">Course Syllabus</h2>
-              <Button onClick={() => setIsAddModuleOpen(true)} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl shadow-none border-none">
-                <Plus className="w-4 h-4 mr-2" /> Add Module
-              </Button>
             </div>
 
-            <div className="space-y-4">
-              {course.modules.map((module, mIdx) => (
-                <div key={module.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                  {/* Module Header */}
-                  <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between group">
-                    <div className="flex items-center gap-3">
-                      <div className="cursor-grab text-slate-300 hover:text-slate-500"><GripVertical className="w-5 h-5" /></div>
-                      <div>
-                        <h3 className="font-bold text-[15px] text-slate-800">{module.title}</h3>
-                        <p className="text-[12px] font-semibold text-slate-500">{module.lessons.length} lessons</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-700"><MoreVertical className="w-4 h-4" /></Button>
-                    </div>
-                  </div>
-
-                  {/* Lessons List */}
-                  <div className="divide-y divide-slate-100">
-                    {module.lessons.map((lesson, lIdx) => (
-                      <div key={lesson.id} className="p-4 pl-12 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${lesson.type === 'Video' ? 'bg-indigo-100 text-indigo-600' : lesson.type === 'Quiz' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                            {lesson.type === 'Video' ? <PlayCircle className="w-4 h-4" /> : lesson.type === 'Quiz' ? <HelpCircle className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-[14px] text-slate-700 flex items-center gap-2">
-                              Lesson {mIdx + 1}.{lIdx + 1}: {lesson.title}
-                              {lesson.type === 'Quiz' && <Badge className="bg-emerald-50 text-emerald-600 border-none px-1.5 py-0 uppercase tracking-wider text-[9px] font-bold">Quiz</Badge>}
-                            </p>
-                            <p className="text-[11px] font-bold text-slate-400 mt-0.5">{lesson.type} • {lesson.duration}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="outline" size="sm" className="h-8 font-bold text-xs border-slate-200">Edit</Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><MoreVertical className="w-4 h-4" /></Button>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Add Lesson Button */}
-                    <div className="p-3 pl-12 bg-white">
-                      <Button onClick={() => handleOpenAddLesson(module.id)} variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold text-sm h-9 px-3 border border-dashed border-transparent hover:border-indigo-200 w-full justify-start">
-                        <Plus className="w-4 h-4 mr-2" /> Add Lesson to {module.title}
-                      </Button>
-                    </div>
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              {/* Module Header */}
+              <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between group">
+                <div className="flex items-center gap-3">
+                  <div className="cursor-grab text-slate-300"><GripVertical className="w-5 h-5" /></div>
+                  <div>
+                    <h3 className="font-bold text-[15px] text-slate-800">Course Content</h3>
+                    <p className="text-[12px] font-semibold text-slate-500">{lessons.length} lessons</p>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Lessons List */}
+              <div className="divide-y divide-slate-100">
+                {lessons.map((lesson, lIdx) => (
+                  <div key={lesson.lessonId} className="p-4 pl-12 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-indigo-100 text-indigo-600">
+                        <PlayCircle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[14px] text-slate-700 flex items-center gap-2">
+                          Lesson {lIdx + 1}: {lesson.title}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-400 mt-0.5">{lesson.description || "Lesson"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="h-8 font-bold text-xs border-slate-200">Edit</Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteLesson(lesson.lessonId)} className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {lessons.length === 0 && (
+                   <div className="p-10 text-center text-slate-500 font-semibold text-sm">
+                     No lessons added yet. Click below to add your first lesson!
+                   </div>
+                )}
+                
+                {/* Add Lesson Button */}
+                <div className="p-3 pl-12 bg-white">
+                  <Button onClick={handleOpenAddLesson} variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold text-sm h-9 px-3 border border-dashed border-transparent hover:border-indigo-200 w-full justify-start">
+                    <Plus className="w-4 h-4 mr-2" /> Add New Lesson
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -217,7 +257,7 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
           <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
              <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
              <h3 className="text-lg font-bold text-slate-800 mb-1">Student Roster</h3>
-             <p className="text-slate-500 font-medium mb-6">View and manage all 1,250 students enrolled in this course.</p>
+             <p className="text-slate-500 font-medium mb-6">View and manage students enrolled in this course.</p>
              <Button variant="outline" className="font-bold border-slate-200">Export Student List</Button>
           </div>
         )}
@@ -227,44 +267,14 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
              <Settings className="w-12 h-12 text-slate-300 mx-auto mb-4" />
              <h3 className="text-lg font-bold text-slate-800 mb-1">Course Settings</h3>
              <p className="text-slate-500 font-medium mb-6">Update course title, thumbnail, pricing, and visibility.</p>
-             <Link href="/teacher/courses/create"><Button variant="outline" className="font-bold border-slate-200">Go to Course Editor</Button></Link>
+             <Button variant="outline" className="font-bold border-slate-200">Edit Settings</Button>
           </div>
         )}
       </div>
 
       {/* --- Overlays & Modals --- */}
-      
-      {/* 1. Add Module Modal */}
-      {isAddModuleOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center backdrop-blur-sm px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="font-extrabold text-lg text-slate-800">Add New Module</h3>
-              <Button variant="ghost" size="icon" onClick={() => setIsAddModuleOpen(false)} className="rounded-full text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-bold text-slate-700">Module Title</Label>
-                <Input 
-                  value={newModuleTitle} 
-                  onChange={e => setNewModuleTitle(e.target.value)} 
-                  placeholder="e.g., Module 3: Part 3 - Conversations" 
-                  className="h-11 rounded-xl"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="p-5 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
-              <Button variant="outline" onClick={() => setIsAddModuleOpen(false)} className="font-bold rounded-xl h-10 px-6 border-slate-200 text-slate-700">Cancel</Button>
-              <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">Save Module</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 2. Select Lesson Type Modal */}
+      {/* Select Lesson Type Modal */}
       {isSelectLessonTypeOpen && (
         <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -312,7 +322,7 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
         </div>
       )}
 
-      {/* 3. Add Lesson Data Modal */}
+      {/* Add Lesson Data Modal */}
       {lessonFormType && (
         <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
@@ -350,28 +360,49 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
                 />
               </div>
 
-              {/* Placeholder for specific fields based on type */}
               {lessonFormType === "Video" && (
                 <div className="space-y-2 pt-2 border-t border-slate-100">
-                   <Label className="text-sm font-bold text-slate-700">Video Link / Upload</Label>
-                   <Input placeholder="https://youtube.com/..." className="h-11 rounded-xl bg-slate-50" />
+                   <Label className="text-sm font-bold text-slate-700">Video Link</Label>
+                   <Input 
+                     value={newLessonData.videoUrl}
+                     onChange={e => setNewLessonData({ ...newLessonData, videoUrl: e.target.value })}
+                     placeholder="https://youtube.com/..." 
+                     className="h-11 rounded-xl bg-slate-50" 
+                   />
                 </div>
               )}
               {lessonFormType === "Document" && (
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                   <Label className="text-sm font-bold text-slate-700">Upload PDF</Label>
-                   <div className="border-2 border-dashed border-slate-200 rounded-xl h-24 flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                     Click to upload document
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                   <Label className="text-sm font-bold text-slate-700">Upload PDF / Document</Label>
+                   <div className="border-2 border-dashed border-slate-200 rounded-xl h-24 flex items-center justify-center text-slate-400 font-bold text-xs bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative overflow-hidden group">
+                     <span className="group-hover:text-indigo-500 transition-colors">Click to browse or drag file here</span>
+                     <input type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                    </div>
+                   
+                   {uploadedFiles.length > 0 && (
+                     <div className="space-y-2 mt-2">
+                       {uploadedFiles.map((file, idx) => (
+                         <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2.5 px-3">
+                           <div className="flex items-center gap-2 overflow-hidden">
+                             <FileCheck2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                             <span className="text-[13px] font-semibold text-slate-700 truncate">{file.name}</span>
+                           </div>
+                           <Button variant="ghost" size="icon" onClick={() => removeFile(idx)} className="w-6 h-6 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 shrink-0">
+                             <X className="w-3.5 h-3.5" />
+                           </Button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
                 </div>
               )}
               {lessonFormType === "Quiz" && (
                 <div className="space-y-2 pt-2 border-t border-slate-100">
-                   <Label className="text-sm font-bold text-slate-700">Select Test Data</Label>
-                   <select className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm font-bold bg-slate-50">
+                   <Label className="text-sm font-bold text-slate-700">Select Practice Test</Label>
+                   <select className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm font-bold bg-slate-50 outline-none focus:border-indigo-500">
                      <option>Select a test from Test Bank...</option>
-                     <option>Weekly Mini-Test #12</option>
-                     <option>Full Practice Test 1</option>
+                     <option>Listening Mini-Test 1</option>
+                     <option>Reading Practice Test</option>
                    </select>
                 </div>
               )}
@@ -379,7 +410,9 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
 
             <div className="p-5 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
               <Button variant="outline" onClick={() => setLessonFormType(null)} className="font-bold rounded-xl h-10 px-6 border-slate-200 text-slate-700">Cancel</Button>
-              <Button onClick={handleAddLessonSubmit} disabled={!newLessonData.title.trim()} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">Add Lesson</Button>
+              <Button onClick={handleAddLessonSubmit} disabled={!newLessonData.title.trim() || isSubmitting} className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Lesson"}
+              </Button>
             </div>
           </div>
         </div>

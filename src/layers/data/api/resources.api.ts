@@ -94,6 +94,16 @@ export async function apiCreateTeacherQuestion(data: CreateTeacherQuestionPayloa
   });
 }
 
+export async function apiUploadTeacherQuestionAudio(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest<{ url: string }>("/api/teacher/questions/upload-audio", {
+    method: "POST",
+    body: formData as any, // Need to handle multipart/form-data properly if using custom fetch
+    auth: true,
+  });
+}
+
 export async function apiGetTOEICTests() {
   return apiRequest<ApiTOEICTest[]>("/api/toeictests");
 }

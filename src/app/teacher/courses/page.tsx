@@ -1,26 +1,55 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Users, Star, BarChart3, Clock, BookOpen, MoreVertical, Edit, Copy, Trash2, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Users, Star, BarChart3, Clock, BookOpen, MoreVertical, Edit, Copy, Trash2, LayoutGrid, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { clearSession } from "@/lib/auth/session";
+import { apiGetTeacherCourses, ApiTeacherCourse } from "@/lib/teacher-courses-api";
 
-const allCourses = [
-  { id: "c1", title: "TOEIC Listening Mastery (Part 1-4)", students: 1250, rating: 4.8, status: "Published", lessons: 24, hours: 12, level: "B1", gradient: "linear-gradient(135deg, #22c55e 0%, #059669 50%, #047857 100%)", progress: 100 },
-  { id: "c2", title: "Advanced Reading Strategies (Part 7)", students: 840, rating: 4.9, status: "Published", lessons: 18, hours: 8, level: null, gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 50%, #0891b2 100%)", progress: 100 },
-  { id: "c3", title: "TOEIC Vocabulary Crash Course", students: 0, rating: 0, status: "Draft", lessons: 12, hours: 5, level: null, gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)", progress: 65 },
-  { id: "c4", title: "Full Mock Test Walkthrough", students: 320, rating: 4.6, status: "Published", lessons: 10, hours: 20, level: null, gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)", progress: 100 },
-  { id: "c5", title: "Grammar Foundation for TOEIC", students: 500, rating: 4.5, status: "Published", lessons: 15, hours: 10, level: "A2", gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)", progress: 100 },
-  { id: "c6", title: "Speaking & Writing Basics", students: 120, rating: 4.2, status: "Draft", lessons: 8, hours: 4, level: "B2", gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)", progress: 40 },
-];
+function getCourseGradient(id: number) {
+  const gradients = [
+    "linear-gradient(135deg, #22c55e 0%, #059669 50%, #047857 100%)",
+    "linear-gradient(135deg, #10b981 0%, #0d9488 50%, #0891b2 100%)",
+    "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)",
+    "linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)",
+    "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%)",
+  ];
+  return gradients[id % gradients.length];
+}
 
 export default function TeacherCoursesPage() {
+  const router = useRouter();
+  const [allCourses, setAllCourses] = useState<ApiTeacherCourse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
-  const totalPages = Math.ceil(allCourses.length / itemsPerPage);
+
+  useEffect(() => {
+    async function loadCourses() {
+      try {
+        const data = await apiGetTeacherCourses();
+        setAllCourses(data);
+      } catch (err: any) {
+        if (err.message === "Unauthorized" || err.message.includes("401")) {
+          clearSession();
+          router.push("/login");
+          return;
+        }
+        setError(err.message || "Failed to load courses");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadCourses();
+  }, []);
+
+  const totalPages = Math.max(1, Math.ceil(allCourses.length / itemsPerPage));
   const courses = allCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
@@ -40,7 +69,7 @@ export default function TeacherCoursesPage() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Courses</p>
-              <p className="text-2xl font-black text-slate-800">4</p>
+              <p className="text-2xl font-black text-slate-800">{allCourses.length}</p>
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
@@ -94,16 +123,26 @@ export default function TeacherCoursesPage() {
 
         {/* Course Grid - Image 1 Style */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {courses.map((course) => (
+          {isLoading && (
+            <div className="col-span-full flex justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+          )}
+          {error && (
+            <div className="col-span-full flex justify-center py-10 text-rose-500 font-semibold bg-rose-50 rounded-2xl border border-rose-200 p-4">
+              <AlertCircle className="w-5 h-5 mr-2" /> {error}
+            </div>
+          )}
+          {!isLoading && !error && courses.map((course) => (
             <div
-              key={course.id}
+              key={course.courseId}
               className="group bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all duration-300 flex flex-col hover:-translate-y-1 border border-slate-100"
             >
               {/* Gradient Header */}
-              <Link href={`/teacher/courses/${course.id}`} className="relative block overflow-hidden">
+              <Link href={`/teacher/courses/${course.courseId}`} className="relative block overflow-hidden">
                 <div
                   className="h-[140px] w-full relative group-hover:scale-[1.02] transition-transform duration-500"
-                  style={{ background: course.gradient }}
+                  style={{ background: getCourseGradient(course.courseId) }}
                 >
                   {/* Decorative circles */}
                   <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
@@ -137,7 +176,7 @@ export default function TeacherCoursesPage() {
               {/* White Content Area */}
               <div className="p-5 flex-1 flex flex-col">
                 {/* Title */}
-                <Link href={`/teacher/courses/${course.id}`}>
+                <Link href={`/teacher/courses/${course.courseId}`}>
                   <h3 className="font-bold text-[15px] text-slate-800 leading-snug line-clamp-2 mb-3 group-hover:text-indigo-700 transition-colors min-h-[42px]">
                     {course.title}
                   </h3>
@@ -145,16 +184,16 @@ export default function TeacherCoursesPage() {
 
 
                 {/* Draft - Curriculum Progress */}
-                {course.status === "Draft" && (
+                {course.status !== "Published" && (
                   <div className="mb-4 space-y-1.5">
                     <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       <span>Curriculum Progress</span>
-                      <span className="text-indigo-600">{course.progress}%</span>
+                      <span className="text-indigo-600">0%</span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-500"
-                        style={{ width: `${course.progress}%` }}
+                        style={{ width: `0%` }}
                       />
                     </div>
                   </div>
@@ -164,21 +203,21 @@ export default function TeacherCoursesPage() {
                 <div className="flex items-center gap-4 text-[13px] text-slate-500 mb-5">
                   <div className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-semibold">{course.students.toLocaleString()}</span>
+                    <span className="font-semibold">0</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-semibold">{course.lessons} Lessons</span>
+                    <span className="font-semibold">{course.lessonsCount || 0} Lessons</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-semibold">{course.hours}h</span>
+                    <span className="font-semibold">0h</span>
                   </div>
                 </div>
 
                 {/* Action Button */}
                 <div className="mt-auto pt-1">
-                  <Link href={`/teacher/courses/${course.id}`} className="block">
+                  <Link href={`/teacher/courses/${course.courseId}`} className="block">
                     <Button className="w-full bg-white hover:bg-indigo-50 text-indigo-600 font-bold border-2 border-indigo-100 hover:border-indigo-300 rounded-xl h-11 shadow-none transition-all duration-200 text-[13px]">
                       {course.status === "Published" ? "Manage Course" : "Continue Editing"}
                     </Button>

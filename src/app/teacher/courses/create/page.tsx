@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { clearSession } from "@/lib/auth/session";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { teacherSidebarItems } from "@/lib/navigation";
 import {
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { apiCreateTeacherCourse } from "@/lib/teacher-courses-api";
 
 export default function CreateCoursePage() {
   const router = useRouter();
@@ -28,21 +30,40 @@ export default function CreateCoursePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setCoverImage(URL.createObjectURL(file));
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!title.trim() || !targetScore || !duration) {
       setError("Please fill in all required fields (Title, Target Score, Duration).");
       return;
     }
     setError("");
-    // In a real app, this would be an API call POST /api/courses
-    alert("Course Created Successfully!");
-    router.push("/teacher/courses");
+    setIsSubmitting(true);
+    
+    try {
+      await apiCreateTeacherCourse({
+        title: title.trim(),
+        description: description.trim(),
+        level: targetScore, // mapping targetScore to level
+        price: price ? parseFloat(price) : 0,
+      });
+      alert("Course Created Successfully!");
+      router.push("/teacher/courses");
+    } catch (err: any) {
+      if (err.message === "Unauthorized" || err.message.includes("401")) {
+        clearSession();
+        router.push("/login");
+        return;
+      }
+      setError(err.message || "Failed to create course. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -209,8 +230,8 @@ export default function CreateCoursePage() {
             <Link href="/teacher/courses" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full sm:w-auto font-bold rounded-xl h-11 px-6 border-slate-200 text-slate-700">Cancel</Button>
             </Link>
-            <Button onClick={handleCreate} className="w-full sm:w-auto bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-11 px-8 shadow-sm">
-              Create Course
+            <Button onClick={handleCreate} disabled={isSubmitting} className="w-full sm:w-auto bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-11 px-8 shadow-sm">
+              {isSubmitting ? "Creating..." : "Create Course"}
             </Button>
           </div>
         </div>
