@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, GraduationCap } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -46,15 +45,14 @@ export function LandingNavbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <Bell className="h-5 w-5" />
-          </Button>
-          <Link href="/login">
-            <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-primary/20">
-              <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=guest" />
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
-          </Link>
+          <div className="hidden sm:flex items-center gap-2">
+            <Button variant="ghost" asChild>
+              <Link href="/login">Log in</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/register">Sign up</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </header>

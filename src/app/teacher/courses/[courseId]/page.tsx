@@ -20,6 +20,7 @@ import {
   apiGetCourseLessons, 
   apiCreateCourseLesson, 
   apiDeleteCourseLesson, 
+  apiUpdateTeacherCourse,
   ApiTeacherCourse, 
   ApiCourseLesson 
 } from "@/lib/teacher-courses-api";
@@ -131,6 +132,23 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
     }
   };
 
+  const handleTogglePublish = async () => {
+    if (!course) return;
+    const newStatus = course.status === "Published" ? "Draft" : "Published";
+    try {
+      const updatedCourse = await apiUpdateTeacherCourse(courseId, { status: newStatus });
+      setCourse(updatedCourse);
+      alert(`Course ${newStatus === "Published" ? "published" : "un-published"} successfully!`);
+    } catch (err: any) {
+       if (err.message === "Unauthorized" || err.message.includes("401")) {
+        clearSession();
+        router.push("/login");
+        return;
+      }
+      alert(`Failed to ${newStatus === "Published" ? "publish" : "un-publish"} course: ` + err.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout sidebarItems={teacherSidebarItems} title="Manage Course" sidebarTitle="Teacher">
@@ -174,7 +192,12 @@ export default function ManageCoursePage({ params }: { params: Promise<{ courseI
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold rounded-xl h-10 px-6 shadow-sm">Publish Course</Button>
+            <Button 
+              onClick={handleTogglePublish}
+              className={`${course.status === "Published" ? "bg-amber-500 hover:bg-amber-600" : "bg-[#4f46e5] hover:bg-[#4338ca]"} text-white font-bold rounded-xl h-10 px-6 shadow-sm`}
+            >
+              {course.status === "Published" ? "Unpublish Course" : "Publish Course"}
+            </Button>
           </div>
         </div>
 

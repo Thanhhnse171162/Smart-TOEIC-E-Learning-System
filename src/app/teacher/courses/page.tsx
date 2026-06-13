@@ -28,6 +28,7 @@ export default function TeacherCoursesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<"all" | "published" | "drafts">("all");
   const itemsPerPage = 4;
 
   useEffect(() => {
@@ -49,11 +50,17 @@ export default function TeacherCoursesPage() {
     loadCourses();
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(allCourses.length / itemsPerPage));
-  const courses = allCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
   const publishedCount = allCourses.filter(c => c.status === "Published").length;
   const draftsCount = allCourses.length - publishedCount;
+
+  const filteredCourses = allCourses.filter(c => {
+    if (activeTab === "published") return c.status === "Published";
+    if (activeTab === "drafts") return c.status !== "Published";
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / itemsPerPage));
+  const courses = filteredCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <DashboardLayout 
@@ -107,9 +114,27 @@ export default function TeacherCoursesPage() {
         {/* Toolbar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-white border-slate-200 text-slate-800 font-bold rounded-xl shadow-sm h-9 px-4">All Courses ({allCourses.length})</Button>
-            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Published ({publishedCount})</Button>
-            <Button variant="ghost" className="text-slate-500 font-bold rounded-xl h-9 px-4">Drafts ({draftsCount})</Button>
+            <Button 
+              variant={activeTab === "all" ? "outline" : "ghost"} 
+              className={`font-bold rounded-xl h-9 px-4 ${activeTab === "all" ? "bg-white border-slate-200 text-slate-800 shadow-sm" : "text-slate-500"}`}
+              onClick={() => { setActiveTab("all"); setCurrentPage(1); }}
+            >
+              All Courses ({allCourses.length})
+            </Button>
+            <Button 
+              variant={activeTab === "published" ? "outline" : "ghost"} 
+              className={`font-bold rounded-xl h-9 px-4 ${activeTab === "published" ? "bg-white border-slate-200 text-slate-800 shadow-sm" : "text-slate-500"}`}
+              onClick={() => { setActiveTab("published"); setCurrentPage(1); }}
+            >
+              Published ({publishedCount})
+            </Button>
+            <Button 
+              variant={activeTab === "drafts" ? "outline" : "ghost"} 
+              className={`font-bold rounded-xl h-9 px-4 ${activeTab === "drafts" ? "bg-white border-slate-200 text-slate-800 shadow-sm" : "text-slate-500"}`}
+              onClick={() => { setActiveTab("drafts"); setCurrentPage(1); }}
+            >
+              Drafts ({draftsCount})
+            </Button>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/teacher/courses/create">
@@ -235,7 +260,7 @@ export default function TeacherCoursesPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4">
             <span className="text-sm font-semibold text-slate-500">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, allCourses.length)} of {allCourses.length} entries
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredCourses.length)} of {filteredCourses.length} entries
             </span>
             <div className="flex items-center gap-2">
               <Button
